@@ -64,11 +64,33 @@
     gap: var(--space-3);
   }
 
+  /* `1fr` is `minmax(auto, 1fr)`, and the nowrap button inside each card sets
+     a min-content floor the track cannot go below. Without this the columns
+     stay wider than the viewport on small phones. */
+  .gallery-card {
+    min-width: 0;
+  }
+
+  .gallery-card .btn {
+    max-width: 100%;
+    white-space: normal;
+  }
+
   .gallery-card {
     padding: var(--space-2);
   }
 
   .gallery-card__desc {
     display: none;
+  }
+}
+
+@media (max-width: 419px) {
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-card__desc {
+    display: block;
   }
 }

@@ -184,20 +184,6 @@ export default function CreatePage() {
                 {tab === 'export' && <ExportPanel />}
               </div>
             </aside>
-
-            <div className="editor__mobile-actions no-print">
-              <button
-                type="button"
-                className="btn btn--primary"
-                onClick={() => {
-                  setTab('export');
-                  window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                }}
-              >
-                <Icon name="download" size={17} />
-                {t('editor.downloadPoster')}
-              </button>
-            </div>
           </div>
         )}
       </div>

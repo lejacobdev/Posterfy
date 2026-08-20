@@ -263,7 +263,9 @@
 }
 
 /* Bottom tab bar --------------------------------------------------------- */
-.tab-bar {
+/* Element+class so this beats `.glass { position: relative }` whatever order
+   the bundler emits the two stylesheets in. */
+nav.tab-bar {
   display: none;
   position: fixed;
   left: var(--space-3);
@@ -297,7 +299,7 @@
 
 @media (max-width: 1023px) {
   .site-header__nav,
-  .site-header__cta {
+  a.site-header__cta {
     display: none;
   }
 
@@ -317,7 +319,7 @@
     display: none;
   }
 
-  .tab-bar {
+  nav.tab-bar {
     display: flex;
   }
 

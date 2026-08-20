@@ -542,10 +542,6 @@
 }
 
 /* Mobile ------------------------------------------------------------------- */
-.editor__mobile-actions {
-  display: none;
-}
-
 @media (max-width: 1023px) {
   .editor {
     grid-template-columns: minmax(0, 1fr);
@@ -595,25 +591,5 @@
 
   .preset-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  /* A persistent download button while the controls are scrolled. */
-  .editor__mobile-actions {
-    position: sticky;
-    bottom: calc(var(--mobile-bar-height) + var(--space-2) + env(safe-area-inset-bottom));
-    z-index: var(--z-sticky);
-    display: flex;
-    gap: var(--space-2);
-    padding: var(--space-2);
-    margin-top: var(--space-4);
-    border-radius: var(--radius-lg);
-    background: var(--glass-bg-strong);
-    -webkit-backdrop-filter: blur(18px);
-    backdrop-filter: blur(18px);
-    border: 1px solid var(--border);
-  }
-
-  .editor__mobile-actions .btn {
-    flex: 1;
   }
 }
