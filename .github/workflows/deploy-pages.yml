@@ -11,9 +11,10 @@ name: Deploy to GitHub Pages
 # every visitor Spotify search, deploy the Node server or the serverless
 # function instead (see README → Deployment).
 
+# Manual only: this project deploys to Vercel, which keeps the Spotify secret
+# server-side. Run this workflow by hand if you also want a static Pages mirror
+# (search there falls back to MusicBrainz — see the note above).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
