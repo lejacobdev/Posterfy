@@ -2,15 +2,18 @@
  * Posterfy service worker.
  *
  * Strategy:
- *   - navigations: network first, cached shell as the offline fallback
+ *   - navigations: network first, cached shell only as an offline fallback
  *   - build assets (hashed): cache first, they never change under one URL
  *   - API + album images: network only, so search always reflects reality
  *
- * No build-time manifest is injected: the worker caches what the app actually
- * requests, which keeps it correct across deployments without extra tooling.
+ * `__BUILD_ID__` is replaced with the real build id at build time (see the
+ * `serviceWorkerBuildId` plugin in vite.config.ts). That matters: the cache
+ * name has to change every deploy, otherwise the activate handler below can
+ * never purge the previous one and a stale index.html keeps being served
+ * pointing at asset hashes that no longer exist — a blank page that persists.
  */
 
-const VERSION = 'v1';
+const VERSION = '__BUILD_ID__';
 const SHELL_CACHE = `posterfy-shell-${VERSION}`;
 const ASSET_CACHE = `posterfy-assets-${VERSION}`;
 
@@ -66,7 +69,10 @@ self.addEventListener('fetch', (event) => {
           caches.open(SHELL_CACHE).then((cache) => cache.put('/index.html', copy));
           return response;
         })
-        .catch(() => caches.match('/index.html').then((cached) => cached ?? Response.error())),
+        .catch(() =>
+          // Offline: fall back to the last good shell rather than a dead tab.
+          caches.match('/index.html').then((cached) => cached ?? Response.error()),
+        ),
     );
     return;
   }

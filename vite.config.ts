@@ -1,4 +1,5 @@
-import { copyFileSync, existsSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import react from '@vitejs/plugin-react';
@@ -42,10 +43,29 @@ function spaFallback(): Plugin {
   };
 }
 
+/**
+ * Stamps the build id into the service worker.
+ *
+ * Without this the cache name is a constant, so `activate` can never delete the
+ * previous deploy's caches and clients can be pinned to stale assets forever.
+ */
+function serviceWorkerBuildId(): Plugin {
+  return {
+    name: 'posterfy-sw-build-id',
+    apply: 'build',
+    closeBundle() {
+      const swPath = join(fileURLToPath(new URL('./dist', import.meta.url)), 'sw.js');
+      if (!existsSync(swPath)) return;
+      const buildId = `${Date.now().toString(36)}-${randomBytes(4).toString('hex')}`;
+      writeFileSync(swPath, readFileSync(swPath, 'utf8').replaceAll('__BUILD_ID__', buildId));
+    },
+  };
+}
+
 export default defineConfig({
   // Set VITE_BASE_PATH=/Posterfy/ when deploying to a project sub-path.
   base: process.env.VITE_BASE_PATH ?? '/',
-  plugins: [react(), apiDevServer(), spaFallback()],
+  plugins: [react(), apiDevServer(), spaFallback(), serviceWorkerBuildId()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
