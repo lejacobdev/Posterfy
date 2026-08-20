@@ -314,11 +314,36 @@ async function handleImage(url, res) {
 }
 
 /**
+ * Restores the real path when a host routes through a splat file.
+ *
+ * Vercel's `api/[...path].js` normally arrives with `req.url` intact, but some
+ * routing paths hand over the bracket filename plus the captured segments in a
+ * `path` query parameter instead. Rebuilding the pathname from that parameter
+ * makes the dispatcher below correct either way, and it is a no-op everywhere
+ * else because no route of ours takes a `path` parameter.
+ */
+function normalizeSplatPath(url) {
+  const captured = url.searchParams.get('path');
+  if (!captured) return;
+  if (url.pathname.startsWith('/api/') && !url.pathname.includes('[')) return;
+
+  const segments = captured
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter((segment) => segment && segment !== '.' && segment !== '..');
+  if (segments.length === 0) return;
+
+  url.pathname = `/api/${segments.join('/')}`;
+  url.searchParams.delete('path');
+}
+
+/**
  * Handles an `/api/*` request.
  * Returns `false` when the path is not ours, so a host can fall through.
  */
 export async function handleApiRequest(req, res) {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+  normalizeSplatPath(url);
   if (!url.pathname.startsWith('/api/')) return false;
 
   applyCors(req, res);

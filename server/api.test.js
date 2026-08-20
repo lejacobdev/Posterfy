@@ -95,6 +95,41 @@ describe('routing', () => {
   });
 });
 
+// Vercel's splat route can hand over the bracket filename plus the captured
+// segments in a `path` parameter. These lock in that nested routes still work.
+describe('splat path normalisation', () => {
+  it('recovers a single-segment route', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/[...path]?path=config'), res);
+    expect(res.statusCode).toBe(200);
+    expect(json(res)).toMatchObject({ imageProxy: true });
+  });
+
+  it('recovers a nested route', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/[...path]?path=spotify/search'), res);
+    // Reaches the search handler, which rejects the missing query itself
+    // rather than the request falling through to a 404.
+    expect(res.statusCode).toBe(400);
+    expect(json(res).error).toBe('missing_query');
+  });
+
+  it('leaves an already-correct path alone', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?path=spotify/search'), res);
+    expect(res.statusCode).toBe(200);
+    expect(json(res).status).toBe('ok');
+  });
+
+  it('cannot be walked out of /api', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/[...path]?path=../../etc/passwd'), res);
+    // Traversal segments are dropped, so this lands on an unknown API route.
+    expect(res.statusCode).toBe(404);
+    expect(json(res).error).toBe('not_found');
+  });
+});
+
 describe('spotify routes', () => {
   it('rejects a search with no query', async () => {
     const res = mockRes();
