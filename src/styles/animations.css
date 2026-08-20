@@ -1,0 +1,206 @@
+/**
+ * Motion. Every animation here is transform/opacity only so it runs on the
+ * compositor, and every one is disabled when the user asks for reduced motion.
+ */
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slide-up-sheet {
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -200% 0;
+  }
+
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes float-y {
+  from {
+    transform: translate3d(0, -8px, 0);
+  }
+
+  to {
+    transform: translate3d(0, 8px, 0);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.9);
+  }
+
+  70% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/* Scroll reveal -------------------------------------------------------- */
+
+/**
+ * Elements start shifted and fade in when they enter the viewport.
+ * `.is-visible` is added by the IntersectionObserver in `useReveal`.
+ */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity 700ms var(--ease-out),
+    transform 700ms var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal--left {
+  transform: translate3d(-28px, 0, 0);
+}
+
+.reveal--right {
+  transform: translate3d(28px, 0, 0);
+}
+
+.reveal--scale {
+  transform: scale(0.94);
+}
+
+/* Utility animations --------------------------------------------------- */
+.animate-fade-up {
+  animation: fade-up 700ms var(--ease-out) both;
+}
+
+.animate-fade-in {
+  animation: fade-in 400ms var(--ease-out) both;
+}
+
+.animate-scale-in {
+  animation: scale-in 260ms var(--ease-spring) both;
+}
+
+.animate-float {
+  animation: float-y 6s var(--ease-in-out) infinite alternate;
+}
+
+.spinner {
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface) 25%,
+    var(--surface-hover) 50%,
+    var(--surface) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* 3D scenes ------------------------------------------------------------ */
+
+.scene-3d {
+  perspective: 1400px;
+  perspective-origin: 50% 45%;
+  transform-style: preserve-3d;
+}
+
+.scene-3d__stage {
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 120ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-float,
+  .skeleton {
+    animation: none;
+  }
+
+  .scene-3d__stage {
+    transition: none;
+  }
+}
+
+:root[data-reduce-motion] .reveal {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
+:root[data-reduce-motion] .animate-float,
+:root[data-reduce-motion] .skeleton {
+  animation: none;
+}

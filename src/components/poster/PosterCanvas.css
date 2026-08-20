@@ -1,0 +1,47 @@
+.poster-canvas {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-sunken);
+  box-shadow: var(--shadow-lg);
+}
+
+.poster-canvas__surface {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.poster-canvas.is-loading .poster-canvas__surface {
+  opacity: 0.35;
+}
+
+.poster-canvas__shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 20%, var(--surface-hover) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.3s linear infinite;
+  pointer-events: none;
+}
+
+/* A subtle paper edge so the poster reads as a physical object. */
+.poster-canvas--framed {
+  padding: clamp(8px, 2.5%, 22px);
+  background: linear-gradient(145deg, var(--surface-strong), var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.poster-canvas--framed .poster-canvas__surface {
+  border-radius: 2px;
+  box-shadow: var(--shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-canvas__shimmer {
+    animation: none;
+  }
+}

@@ -1,0 +1,273 @@
+/**
+ * Editor state: the album being posterised, every design option, and an
+ * undo/redo history. Persisted to localStorage so a refresh never loses work.
+ */
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  type ReactNode,
+} from 'react';
+import type { Album, PosterOptions, PosterSpec, Track } from '@/lib/types';
+import { createEmptyAlbum, DEFAULT_OPTIONS, type StylePreset } from '@/lib/poster/defaults';
+import { readStorage, STORAGE_KEYS, writeStorage } from './storage';
+
+interface PosterState {
+  album: Album;
+  options: PosterOptions;
+  /** True once the user has picked an album or chosen to start from scratch. */
+  started: boolean;
+  past: Snapshot[];
+  future: Snapshot[];
+  /** Key of the last edited option, used to coalesce slider drags. */
+  lastTouched: string | null;
+  lastTouchedAt: number;
+}
+
+interface Snapshot {
+  album: Album;
+  options: PosterOptions;
+}
+
+interface StoredPoster extends Snapshot {
+  started?: boolean;
+}
+
+type Action =
+  | { type: 'setAlbum'; album: Album }
+  | { type: 'setOption'; key: keyof PosterOptions; value: PosterOptions[keyof PosterOptions] }
+  | { type: 'setOptions'; options: Partial<PosterOptions> }
+  | { type: 'applyPreset'; preset: StylePreset }
+  | { type: 'setTracks'; tracks: Track[] }
+  | { type: 'setCover'; coverUrl: string | null }
+  | { type: 'startDraft' }
+  | { type: 'undo' }
+  | { type: 'redo' }
+  | { type: 'reset' }
+  | { type: 'hydrate'; snapshot: Snapshot };
+
+const HISTORY_LIMIT = 60;
+/** Consecutive edits to the same control inside this window collapse into one. */
+const COALESCE_MS = 700;
+
+function snapshot(state: PosterState): Snapshot {
+  return { album: state.album, options: state.options };
+}
+
+function pushHistory(state: PosterState, key: string | null): Snapshot[] {
+  const now = Date.now();
+  const isContinuation =
+    key !== null && key === state.lastTouched && now - state.lastTouchedAt < COALESCE_MS;
+  if (isContinuation) return state.past;
+  return [...state.past, snapshot(state)].slice(-HISTORY_LIMIT);
+}
+
+function totalDuration(tracks: Track[]): number {
+  return tracks.reduce((sum, track) => sum + (track.durationMs || 0), 0);
+}
+
+function reducer(state: PosterState, action: Action): PosterState {
+  switch (action.type) {
+    case 'startDraft':
+      return { ...state, started: true };
+
+    case 'setAlbum':
+      return {
+        ...state,
+        past: pushHistory(state, null),
+        future: [],
+        started: true,
+        album: action.album,
+        lastTouched: null,
+        lastTouchedAt: Date.now(),
+      };
+
+    case 'setOption':
+      return {
+        ...state,
+        past: pushHistory(state, String(action.key)),
+        future: [],
+        options: { ...state.options, [action.key]: action.value },
+        lastTouched: String(action.key),
+        lastTouchedAt: Date.now(),
+      };
+
+    case 'setOptions':
+      return {
+        ...state,
+        past: pushHistory(state, null),
+        future: [],
+        options: { ...state.options, ...action.options },
+        lastTouched: null,
+        lastTouchedAt: Date.now(),
+      };
+
+    case 'applyPreset':
+      return {
+        ...state,
+        past: pushHistory(state, null),
+        future: [],
+        options: { ...state.options, ...action.preset.options },
+        lastTouched: null,
+        lastTouchedAt: Date.now(),
+      };
+
+    case 'setTracks':
+      return {
+        ...state,
+        past: pushHistory(state, null),
+        future: [],
+        album: {
+          ...state.album,
+          tracks: action.tracks,
+          totalDurationMs: totalDuration(action.tracks),
+        },
+        lastTouched: null,
+        lastTouchedAt: Date.now(),
+      };
+
+    case 'setCover':
+      return {
+        ...state,
+        past: pushHistory(state, null),
+        future: [],
+        album: { ...state.album, coverUrl: action.coverUrl, coverUrlHiRes: action.coverUrl },
+        lastTouched: null,
+        lastTouchedAt: Date.now(),
+      };
+
+    case 'undo': {
+      const previous = state.past[state.past.length - 1];
+      if (!previous) return state;
+      return {
+        ...state,
+        past: state.past.slice(0, -1),
+        future: [snapshot(state), ...state.future].slice(0, HISTORY_LIMIT),
+        album: previous.album,
+        options: previous.options,
+        lastTouched: null,
+      };
+    }
+
+    case 'redo': {
+      const next = state.future[0];
+      if (!next) return state;
+      return {
+        ...state,
+        past: [...state.past, snapshot(state)].slice(-HISTORY_LIMIT),
+        future: state.future.slice(1),
+        album: next.album,
+        options: next.options,
+        lastTouched: null,
+      };
+    }
+
+    case 'reset':
+      return {
+        ...state,
+        past: pushHistory(state, null),
+        future: [],
+        options: { ...DEFAULT_OPTIONS },
+        lastTouched: null,
+      };
+
+    case 'hydrate':
+      return { ...state, album: action.snapshot.album, options: action.snapshot.options };
+
+    default:
+      return state;
+  }
+}
+
+function initialState(): PosterState {
+  const stored = readStorage<StoredPoster | null>(STORAGE_KEYS.poster, null);
+  const album = stored?.album ?? createEmptyAlbum();
+  return {
+    album,
+    // Merge with defaults so posters saved by an older version still load.
+    options: { ...DEFAULT_OPTIONS, ...(stored?.options ?? {}) },
+    started: stored?.started ?? Boolean(album.title || album.artist || album.coverUrl),
+    past: [],
+    future: [],
+    lastTouched: null,
+    lastTouchedAt: 0,
+  };
+}
+
+export interface PosterContextValue {
+  album: Album;
+  options: PosterOptions;
+  spec: PosterSpec;
+  canUndo: boolean;
+  canRedo: boolean;
+  /** Whether the editor should be shown instead of the pick-an-album state. */
+  hasAlbum: boolean;
+  setAlbum: (album: Album) => void;
+  /** Opens the editor with a blank poster the user fills in by hand. */
+  startDraft: () => void;
+  setOption: <K extends keyof PosterOptions>(key: K, value: PosterOptions[K]) => void;
+  setOptions: (options: Partial<PosterOptions>) => void;
+  applyPreset: (preset: StylePreset) => void;
+  setTracks: (tracks: Track[]) => void;
+  setCover: (coverUrl: string | null) => void;
+  undo: () => void;
+  redo: () => void;
+  reset: () => void;
+}
+
+const PosterContext = createContext<PosterContextValue | null>(null);
+
+export function PosterProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+
+  // Persist on every change; localStorage writes are cheap and this is small.
+  useEffect(() => {
+    writeStorage(STORAGE_KEYS.poster, {
+      album: state.album,
+      options: state.options,
+      started: state.started,
+    });
+  }, [state.album, state.options, state.started]);
+
+  const setOption = useCallback(
+    <K extends keyof PosterOptions>(key: K, value: PosterOptions[K]) => {
+      dispatch({ type: 'setOption', key, value });
+    },
+    [],
+  );
+
+  const value = useMemo<PosterContextValue>(
+    () => ({
+      album: state.album,
+      options: state.options,
+      spec: { album: state.album, options: state.options },
+      canUndo: state.past.length > 0,
+      canRedo: state.future.length > 0,
+      hasAlbum:
+        state.started || Boolean(state.album.title || state.album.artist || state.album.coverUrl),
+      setAlbum: (album) => dispatch({ type: 'setAlbum', album }),
+      startDraft: () => dispatch({ type: 'startDraft' }),
+      setOption,
+      setOptions: (options) => dispatch({ type: 'setOptions', options }),
+      applyPreset: (preset) => dispatch({ type: 'applyPreset', preset }),
+      setTracks: (tracks) => dispatch({ type: 'setTracks', tracks }),
+      setCover: (coverUrl) => dispatch({ type: 'setCover', coverUrl }),
+      undo: () => dispatch({ type: 'undo' }),
+      redo: () => dispatch({ type: 'redo' }),
+      reset: () => dispatch({ type: 'reset' }),
+    }),
+    [state, setOption],
+  );
+
+  return <PosterContext.Provider value={value}>{children}</PosterContext.Provider>;
+}
+
+export function usePoster(): PosterContextValue {
+  const context = useContext(PosterContext);
+  if (!context) throw new Error('usePoster must be used inside a PosterProvider');
+  return context;
+}

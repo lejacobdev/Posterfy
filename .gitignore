@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build output
+dist/
+dist-ssr/
+build/
+*.local
+
+# test / coverage
+coverage/
+.vitest/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# platform
+.vercel/
+.netlify/
+.cache/

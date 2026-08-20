@@ -1,0 +1,239 @@
+/* Shared page-level layout: headers, prose blocks and card grids. */
+
+.site-main {
+  position: relative;
+  z-index: var(--z-content);
+  flex: 1;
+  outline: none;
+}
+
+/* Page header ---------------------------------------------------------- */
+.page-header {
+  padding-block: clamp(var(--space-6), 6vw, var(--space-8)) var(--space-6);
+  text-align: center;
+}
+
+.page-header__eyebrow {
+  display: inline-flex;
+  margin-bottom: var(--space-3);
+}
+
+.page-header__title {
+  font-size: var(--text-4xl);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.page-header__subtitle {
+  margin: var(--space-4) auto 0;
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+/* Prose ---------------------------------------------------------------- */
+.prose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-muted);
+}
+
+.prose h2 {
+  font-size: var(--text-xl);
+  color: var(--text);
+  margin-top: var(--space-4);
+}
+
+.prose h3 {
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+.prose a {
+  color: var(--brand-400);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.prose strong {
+  color: var(--text);
+}
+
+.prose ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-5);
+  list-style: disc;
+}
+
+/* Cards ----------------------------------------------------------------- */
+.card-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  height: 100%;
+}
+
+.feature-card__icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand-500) 30%, transparent),
+    color-mix(in srgb, var(--accent-cyan) 22%, transparent)
+  );
+  color: var(--brand-300);
+}
+
+.feature-card__title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.feature-card__body {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Accordion (FAQ) -------------------------------------------------------- */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.accordion__item {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.accordion__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  min-height: 60px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: var(--text-base);
+}
+
+.accordion__summary::-webkit-details-marker {
+  display: none;
+}
+
+.accordion__summary:hover {
+  background: var(--surface);
+}
+
+.accordion__marker {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--text-subtle);
+  transition: transform var(--duration-base) var(--ease-out);
+}
+
+.accordion__item[open] .accordion__marker {
+  transform: rotate(45deg);
+}
+
+.accordion__body {
+  padding: 0 var(--space-5) var(--space-5);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  max-width: 78ch;
+}
+
+/* Section headings ------------------------------------------------------- */
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: center;
+  text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+.section-head--left {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* Empty states ----------------------------------------------------------- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+}
+
+.empty-state__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--brand-400);
+}
+
+/* CTA banner -------------------------------------------------------------- */
+.cta-banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: clamp(var(--space-6), 6vw, var(--space-8));
+  text-align: center;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.cta-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 140% at 50% 0%,
+    color-mix(in srgb, var(--brand-500) 26%, transparent),
+    transparent 60%
+  );
+  pointer-events: none;
+}
+
+.cta-banner > * {
+  position: relative;
+}
+
+/* Utility ---------------------------------------------------------------- */
+.hstack-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

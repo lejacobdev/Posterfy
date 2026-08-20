@@ -1,0 +1,131 @@
+/* Vinyl scene ----------------------------------------------------------- */
+.vinyl-scene {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 1.35 / 1;
+  display: grid;
+  place-items: center;
+}
+
+.vinyl-scene__stage {
+  position: relative;
+  width: 72%;
+  aspect-ratio: 1;
+}
+
+.vinyl-scene__sleeve {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px var(--border);
+  transform: translateZ(20px);
+}
+
+.vinyl-scene__art {
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-strong);
+}
+
+/* Light raking across the sleeve, as if lit from the upper left. */
+.vinyl-scene__sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    118deg,
+    rgb(255 255 255 / 26%) 0%,
+    rgb(255 255 255 / 4%) 22%,
+    transparent 45%,
+    rgb(0 0 0 / 18%) 100%
+  );
+  pointer-events: none;
+}
+
+.vinyl-scene__disc {
+  position: absolute;
+  inset: 2%;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgb(255 255 255 / 5%) 0 1px, transparent 1px 4px),
+    radial-gradient(circle at 50% 50%, #1a1a1e 0%, #0a0a0c 62%, #131317 100%);
+  box-shadow: var(--shadow-lg);
+  will-change: transform;
+  transition: transform 120ms linear;
+}
+
+.vinyl-scene__grooves {
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    rgb(255 255 255 / 10%),
+    transparent 18%,
+    rgb(255 255 255 / 7%) 34%,
+    transparent 52%,
+    rgb(255 255 255 / 11%) 70%,
+    transparent 88%,
+    rgb(255 255 255 / 8%)
+  );
+  mix-blend-mode: screen;
+}
+
+.vinyl-scene__label {
+  position: absolute;
+  inset: 34%;
+  border-radius: 50%;
+  background-color: var(--brand-500);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 35%);
+}
+
+.vinyl-scene__spindle {
+  position: absolute;
+  inset: 47.6%;
+  border-radius: 50%;
+  background: var(--bg);
+}
+
+/* Poster stack ----------------------------------------------------------- */
+.poster-stack {
+  position: relative;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding-block: var(--space-5);
+}
+
+.poster-stack__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 340px);
+}
+
+.poster-stack__item {
+  grid-area: 1 / 1;
+  width: 100%;
+  transition: transform var(--duration-slow) var(--ease-out);
+  will-change: transform;
+}
+
+@media (max-width: 719px) {
+  .vinyl-scene {
+    max-width: 340px;
+  }
+
+  .poster-stack__stage {
+    width: min(100%, 260px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vinyl-scene__disc,
+  .poster-stack__item {
+    transition: none;
+  }
+}

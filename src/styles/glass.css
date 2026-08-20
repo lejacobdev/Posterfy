@@ -1,0 +1,184 @@
+/**
+ * Liquid glass surfaces.
+ *
+ * A glass panel is three layers: a translucent tinted fill, a blurred backdrop,
+ * and a specular highlight along the top edge that catches the light. Browsers
+ * without `backdrop-filter` fall back to an opaque surface automatically.
+ */
+
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass {
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--bg-elevated);
+  }
+}
+
+/* The highlight: a hairline of light across the top, like a bevelled edge. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--glass-highlight) 22%,
+    var(--glass-highlight) 78%,
+    transparent
+  );
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.glass--strong {
+  background: var(--glass-bg-strong);
+}
+
+.glass--flat {
+  box-shadow: none;
+}
+
+.glass--pill {
+  border-radius: var(--radius-pill);
+}
+
+/* Interactive glass: lifts and brightens under the pointer. */
+.glass--interactive {
+  transition:
+    transform var(--duration-base) var(--ease-spring),
+    border-color var(--duration-base) var(--ease-out),
+    box-shadow var(--duration-base) var(--ease-out);
+}
+
+.glass--interactive:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-lg);
+}
+
+/**
+ * Sheen that sweeps across a card when the pointer enters. `--mx`/`--my` are
+ * set from JS on pointer move so the light follows the cursor.
+ */
+.glass--sheen::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: radial-gradient(
+    340px circle at var(--mx, 50%) var(--my, 0%),
+    color-mix(in srgb, var(--brand-400) 22%, transparent),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity var(--duration-slow) var(--ease-out);
+  pointer-events: none;
+}
+
+.glass--sheen:hover::after,
+.glass--sheen:focus-within::after {
+  opacity: 1;
+}
+
+/* Ambient background -------------------------------------------------- */
+
+/**
+ * Slow-drifting colour field behind the whole app. Uses transform-only
+ * animation so it stays on the compositor and never triggers layout.
+ */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-background);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora__blob {
+  position: absolute;
+  width: 55vmax;
+  height: 55vmax;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.5;
+  will-change: transform;
+  animation: aurora-drift 32s var(--ease-in-out) infinite alternate;
+}
+
+.aurora__blob--1 {
+  top: -18vmax;
+  left: -12vmax;
+  background: radial-gradient(circle, var(--brand-500), transparent 65%);
+}
+
+.aurora__blob--2 {
+  top: 20vmax;
+  right: -20vmax;
+  background: radial-gradient(circle, var(--accent-cyan), transparent 65%);
+  animation-duration: 41s;
+  animation-delay: -8s;
+}
+
+.aurora__blob--3 {
+  bottom: -25vmax;
+  left: 25vw;
+  background: radial-gradient(circle, var(--accent-pink), transparent 65%);
+  animation-duration: 47s;
+  animation-delay: -18s;
+  opacity: 0.32;
+}
+
+:root[data-theme='light'] .aurora__blob {
+  opacity: 0.3;
+}
+
+/* A fine noise layer stops the large gradients from banding. */
+.aurora__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+@keyframes aurora-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(6vw, 8vh, 0) scale(1.18);
+  }
+}
+
+/* Grid backdrop used behind hero sections. */
+.grid-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-background);
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 75%);
+  opacity: 0.55;
+}
+
+:root[data-reduce-motion] .aurora__blob {
+  animation: none;
+}
