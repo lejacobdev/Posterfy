@@ -85,6 +85,10 @@ The palette is quantised from the artwork with median cut (`src/lib/color/color.
 | MusicBrainz + Cover Art Archive           | none        | Always available as the fallback              |
 | Manual entry                              | none        | Anything the databases don't have             |
 
+**Artwork** comes from Spotify whenever credentials are configured — including for albums whose _metadata_ came from MusicBrainz, where the cover is resolved by matching title and artist. The Cover Art Archive is used only when there are no Spotify credentials, because it has no image at all for a large share of release groups. A match is only accepted when title and artist agree, so a wrong sleeve is never substituted.
+
+Note that Spotify's largest cover is 640×640, so very large prints upscale the artwork.
+
 `/api/image` re-serves remote artwork with permissive CORS headers so exports never hit a tainted canvas. Only Spotify's and the Cover Art Archive's hosts are allowed through it.
 
 ## Deployment

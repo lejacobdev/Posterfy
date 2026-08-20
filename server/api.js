@@ -297,6 +297,57 @@ function mbArtist(credits) {
     .trim();
 }
 
+/**
+ * Artwork resolution.
+ *
+ * Cover Art Archive has no image for a large share of release groups, and the
+ * ones it does have vary in size. Spotify always serves a consistent 640px
+ * cover, so whenever credentials are present the artwork is taken from there
+ * and the Archive is kept only as the no-credentials fallback.
+ */
+
+/** Loose comparison so punctuation and case do not defeat a real match. */
+function normaliseTitle(value) {
+  return String(value ?? '')
+    .toLowerCase()
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Finds the Spotify cover for an album by name. Returns null rather than
+ * guessing when nothing matches confidently, so a wrong sleeve is never shown.
+ */
+async function spotifyCoverFor(title, artist) {
+  if (!hasSpotifyCredentials() || !title) return null;
+
+  const query = artist ? `album:${title} artist:${artist}` : `album:${title}`;
+  let items = [];
+  try {
+    const payload = await spotifyRequest('/search', { q: query, type: 'album', limit: 5 });
+    items = payload?.albums?.items ?? [];
+  } catch (error) {
+    console.warn('[posterfy:api] spotify cover lookup failed:', error?.message);
+    return null;
+  }
+
+  const wantTitle = normaliseTitle(title);
+  const wantArtist = normaliseTitle(artist);
+
+  const match = items.filter(Boolean).find((album) => {
+    if (normaliseTitle(album.name) !== wantTitle) return false;
+    if (!wantArtist) return true;
+    return (album.artists ?? []).some((a) => normaliseTitle(a.name) === wantArtist);
+  });
+  if (!match) return null;
+
+  return {
+    coverUrl: pickImage(match.images, 'medium'),
+    coverUrlHiRes: pickImage(match.images, 'large'),
+  };
+}
+
 async function musicbrainzSearch(query, limit) {
   const data = await musicbrainzRequest('/release-group', {
     query: `${query} AND (primarytype:album OR primarytype:ep)`,
@@ -347,14 +398,20 @@ async function musicbrainzAlbum(releaseGroupId) {
     });
   });
 
+  const title = release.title ?? '';
+  const artist = mbArtist(release['artist-credit']);
+
+  // One extra request per album selection, which buys consistent artwork.
+  const spotifyArt = await spotifyCoverFor(title, artist);
+
   return {
     id: releaseGroupId,
     source: 'musicbrainz',
-    title: release.title ?? '',
-    artist: mbArtist(release['artist-credit']),
+    title,
+    artist,
     releaseDate: release.date ?? '',
-    coverUrl: mbCoverUrl(releaseGroupId, 500),
-    coverUrlHiRes: mbCoverUrl(releaseGroupId, 1200),
+    coverUrl: spotifyArt?.coverUrl ?? mbCoverUrl(releaseGroupId, 500),
+    coverUrlHiRes: spotifyArt?.coverUrlHiRes ?? mbCoverUrl(releaseGroupId, 1200),
     tracks,
     genres: [],
     label: release['label-info']?.[0]?.label?.name ?? null,

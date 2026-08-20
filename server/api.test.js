@@ -383,3 +383,114 @@ describe('musicbrainz fallback', () => {
     expect(json(res)).toMatchObject({ spotify: false, musicbrainz: true, imageProxy: true });
   });
 });
+
+/**
+ * Artwork source. Cover Art Archive is missing art for many release groups, so
+ * Spotify supplies it whenever credentials exist.
+ */
+describe('artwork resolution', () => {
+  const MB_ID = 'f5093c06-23e3-404f-aeaa-40f72885ee3a';
+
+  const RELEASE = {
+    releases: [
+      {
+        id: MB_ID,
+        title: 'Brothers in Arms',
+        date: '1985-05-13',
+        'artist-credit': [{ name: 'Dire Straits' }],
+        media: [{ position: 1, tracks: [{ title: 'So Far Away', length: 300000 }] }],
+      },
+    ],
+  };
+
+  /** Routes each request by URL: MusicBrainz, Spotify token, Spotify search. */
+  function routedFetch(spotifyItems) {
+    return vi.fn(async (input) => {
+      const url = String(input);
+      const body = url.includes('musicbrainz.org')
+        ? RELEASE
+        : url.includes('accounts.spotify.com')
+          ? { access_token: 'test-token', expires_in: 3600 }
+          : { albums: { items: spotifyItems } };
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+  }
+
+  const SPOTIFY_MATCH = [
+    {
+      id: 'sp1',
+      name: 'Brothers in Arms',
+      artists: [{ name: 'Dire Straits' }],
+      images: [
+        { url: 'https://i.scdn.co/image/big', width: 640 },
+        { url: 'https://i.scdn.co/image/mid', width: 300 },
+      ],
+    },
+  ];
+
+  let savedId;
+  let savedSecret;
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  it('uses Spotify artwork for a MusicBrainz album', async () => {
+    vi.stubGlobal('fetch', routedFetch(SPOTIFY_MATCH));
+
+    const res = mockRes();
+    await handleApiRequest(mockReq(`/api/album?id=${MB_ID}&source=musicbrainz`), res);
+
+    const album = json(res).album;
+    expect(album.coverUrl).toContain('i.scdn.co');
+    expect(album.coverUrlHiRes).toBe('https://i.scdn.co/image/big');
+    // Metadata still comes from MusicBrainz.
+    expect(album.source).toBe('musicbrainz');
+    expect(album.tracks).toHaveLength(1);
+  });
+
+  it('keeps Cover Art Archive when Spotify has no confident match', async () => {
+    vi.stubGlobal(
+      'fetch',
+      routedFetch([
+        {
+          id: 'sp2',
+          name: 'A Totally Different Record',
+          artists: [{ name: 'Someone Else' }],
+          images: [],
+        },
+      ]),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq(`/api/album?id=${MB_ID}&source=musicbrainz`), res);
+
+    const album = json(res).album;
+    expect(album.coverUrl).toContain('coverartarchive.org');
+  });
+
+  it('falls back to Cover Art Archive with no Spotify credentials', async () => {
+    delete process.env.SPOTIFY_CLIENT_ID;
+    delete process.env.SPOTIFY_CLIENT_SECRET;
+    vi.stubGlobal('fetch', routedFetch(SPOTIFY_MATCH));
+
+    const res = mockRes();
+    await handleApiRequest(mockReq(`/api/album?id=${MB_ID}&source=musicbrainz`), res);
+
+    expect(json(res).album.coverUrl).toContain('coverartarchive.org');
+  });
+});
