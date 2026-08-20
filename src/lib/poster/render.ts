@@ -7,6 +7,7 @@
  */
 
 import type {
+  Album,
   LoadedCover,
   PosterLabels,
   PosterSpec,
@@ -122,6 +123,25 @@ export function renderPoster(args: RenderPosterArgs): void {
   ctx.restore();
 }
 
+/** Previews take the small cover; exports take the largest one available. */
+export type CoverQuality = 'preview' | 'export';
+
+/**
+ * Picks which artwork URL to load.
+ *
+ * Both directions fall back to the other size. Previously only the export path
+ * did, so an album that had a hi-res cover but no medium one rendered its
+ * preview as a placeholder even though artwork existed.
+ */
+export function selectCoverUrl(
+  album: Pick<Album, 'coverUrl' | 'coverUrlHiRes'>,
+  quality: CoverQuality,
+): string | null {
+  return quality === 'export'
+    ? (album.coverUrlHiRes ?? album.coverUrl)
+    : (album.coverUrl ?? album.coverUrlHiRes);
+}
+
 export interface PreparedAssets {
   cover: LoadedCover | null;
   scanImage: LoadedCover | null;
@@ -136,12 +156,12 @@ export interface PreparedAssets {
  */
 export async function preparePosterAssets(
   spec: PosterSpec,
-  options: { samplePalette?: boolean; hiRes?: boolean } = {},
+  options: { samplePalette?: boolean; quality?: CoverQuality } = {},
 ): Promise<PreparedAssets> {
   const { album, options: posterOptions } = spec;
   await ensureFontsReady();
 
-  const coverUrl = options.hiRes ? (album.coverUrlHiRes ?? album.coverUrl) : album.coverUrl;
+  const coverUrl = selectCoverUrl(album, options.quality ?? 'preview');
 
   let cover: LoadedCover | null = null;
   if (coverUrl) {

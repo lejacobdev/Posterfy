@@ -91,7 +91,10 @@ export function PosterCanvas({
         setStatus('loading');
         onRenderStateChange?.('loading');
         try {
-          const assets = await preparePosterAssets(spec, { samplePalette: Boolean(onPalette) });
+          const assets = await preparePosterAssets(spec, {
+            samplePalette: Boolean(onPalette),
+            quality: 'preview',
+          });
           if (cancelled || token !== renderToken.current) return;
           assetsRef.current = { key: assetKey, cover: assets.cover, scan: assets.scanImage };
           if (assets.palette && onPalette) onPalette(assets.palette);

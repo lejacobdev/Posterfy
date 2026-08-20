@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Album, PosterOptions, PosterSpec } from '@/lib/types';
 import { DEFAULT_OPTIONS, TEMPLATE_IDS } from './defaults';
 import { FORMAT_IDS, designHeight } from './formats';
-import { renderPoster, resolveTheme } from './render';
+import { renderPoster, resolveTheme, selectCoverUrl } from './render';
 import { contrastRatio } from '@/lib/color/color';
 
 interface Recorder {
@@ -187,6 +187,32 @@ describe('resolveTheme', () => {
   it('falls back to a default palette when none is set', () => {
     const theme = resolveTheme(spec({ palette: [] }));
     expect(theme.palette.length).toBeGreaterThan(0);
+  });
+});
+
+describe('selectCoverUrl', () => {
+  const SMALL = 'https://i.scdn.co/image/small';
+  const LARGE = 'https://i.scdn.co/image/large';
+
+  it('keeps previews on the small cover', () => {
+    expect(selectCoverUrl({ coverUrl: SMALL, coverUrlHiRes: LARGE }, 'preview')).toBe(SMALL);
+  });
+
+  it('gives exports the largest cover', () => {
+    expect(selectCoverUrl({ coverUrl: SMALL, coverUrlHiRes: LARGE }, 'export')).toBe(LARGE);
+  });
+
+  it('falls back to the hi-res cover when a preview has no small one', () => {
+    expect(selectCoverUrl({ coverUrl: null, coverUrlHiRes: LARGE }, 'preview')).toBe(LARGE);
+  });
+
+  it('falls back to the small cover when an export has no hi-res one', () => {
+    expect(selectCoverUrl({ coverUrl: SMALL, coverUrlHiRes: null }, 'export')).toBe(SMALL);
+  });
+
+  it('reports no artwork when the album has none', () => {
+    expect(selectCoverUrl({ coverUrl: null, coverUrlHiRes: null }, 'preview')).toBeNull();
+    expect(selectCoverUrl({ coverUrl: null, coverUrlHiRes: null }, 'export')).toBeNull();
   });
 });
 

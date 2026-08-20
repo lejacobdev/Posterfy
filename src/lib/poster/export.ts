@@ -76,7 +76,7 @@ export async function renderPosterToBlob(args: RenderToBlobArgs): Promise<Blob> 
   const { spec, options, locale, labels, onProgress } = args;
 
   onProgress?.('loading');
-  const assets = await preparePosterAssets(spec, { samplePalette: false, hiRes: true });
+  const assets = await preparePosterAssets(spec, { samplePalette: false, quality: 'export' });
 
   onProgress?.('rendering');
   const canvas = document.createElement('canvas');
