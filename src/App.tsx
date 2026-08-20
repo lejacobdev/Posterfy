@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AppShell } from '@/components/layout/AppShell';
 import { SettingsProvider } from '@/lib/store/settings';
 import { PosterProvider } from '@/lib/store/poster';
@@ -50,6 +51,7 @@ export function App() {
           <ToastProvider>
             <PosterProvider>
               <RouterProvider router={router} />
+              <SpeedInsights />
             </PosterProvider>
           </ToastProvider>
         </I18nProvider>
