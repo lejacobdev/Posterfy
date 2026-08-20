@@ -186,7 +186,11 @@ function normalizeSearchResults(payload) {
     title: album.name ?? '',
     artist: (album.artists ?? []).map((artist) => artist.name).join(', '),
     releaseDate: album.release_date ?? '',
-    coverUrl: pickImage(album.images, 'medium'),
+    // Search rows draw this into a 46px thumbnail, so take Spotify's smallest
+    // image (64px). The full-size artwork is fetched later, per album, by the
+    // renderer — a result list would otherwise pull a dozen 300px covers the
+    // user never sees.
+    coverUrl: pickImage(album.images, 'small'),
     totalTracks: album.total_tracks ?? 0,
   }));
 }

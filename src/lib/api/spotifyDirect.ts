@@ -133,9 +133,14 @@ interface SpotifyTrackPayload {
   explicit?: boolean;
 }
 
-function pickImage(images: SpotifyImage[] | undefined, size: 'large' | 'medium'): string | null {
+/** Spotify ships three sizes per album: roughly 640, 300 and 64 pixels wide. */
+function pickImage(
+  images: SpotifyImage[] | undefined,
+  size: 'large' | 'medium' | 'small',
+): string | null {
   if (!images?.length) return null;
   const sorted = [...images].sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+  if (size === 'small') return sorted[sorted.length - 1]?.url ?? null;
   if (size === 'medium')
     return sorted[Math.floor(sorted.length / 2)]?.url ?? sorted[0]?.url ?? null;
   return sorted[0]?.url ?? null;
@@ -164,7 +169,8 @@ export async function searchAlbumsDirect(
     title: album.name ?? '',
     artist: artistNames(album),
     releaseDate: album.release_date ?? '',
-    coverUrl: pickImage(album.images, 'medium'),
+    // Thumbnail-sized, like the server route: see normalizeSearchResults.
+    coverUrl: pickImage(album.images, 'small'),
     totalTracks: album.total_tracks ?? 0,
   }));
 }

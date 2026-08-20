@@ -494,3 +494,63 @@ describe('artwork resolution', () => {
     expect(json(res).album.coverUrl).toContain('coverartarchive.org');
   });
 });
+
+describe('search artwork size', () => {
+  const IMAGES = [
+    { url: 'https://i.scdn.co/image/big', width: 640, height: 640 },
+    { url: 'https://i.scdn.co/image/mid', width: 300, height: 300 },
+    { url: 'https://i.scdn.co/image/tiny', width: 64, height: 64 },
+  ];
+
+  let savedId;
+  let savedSecret;
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        const body = url.includes('accounts.spotify.com')
+          ? { access_token: 'test-token', expires_in: 3600 }
+          : {
+              albums: {
+                items: [
+                  {
+                    id: 'sp1',
+                    name: 'Brothers in Arms',
+                    artists: [{ name: 'Dire Straits' }],
+                    release_date: '1985-05-13',
+                    total_tracks: 9,
+                    images: IMAGES,
+                  },
+                ],
+              },
+            };
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  it('sends the smallest cover to the result list', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    // The rows are 46px thumbnails; anything larger is wasted bandwidth.
+    expect(json(res).results[0].coverUrl).toBe('https://i.scdn.co/image/tiny');
+  });
+});
