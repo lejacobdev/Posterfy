@@ -7,11 +7,13 @@
  * identically across the dev server, the Node server and serverless.
  */
 
-import type { Album, AlbumSummary } from '@/lib/types';
+import type { Album, AlbumSummary, ProviderId } from '@/lib/types';
 import { getJson, type RequestOptions } from './client';
 
 interface SearchResponse {
   results: AlbumSummary[];
+  /** Which backend actually answered — the server picks it, not the client. */
+  provider?: ProviderId;
 }
 
 interface AlbumResponse {
@@ -20,6 +22,12 @@ interface AlbumResponse {
 
 export interface ProviderConfig {
   spotify: boolean;
+  /** The keyless provider, served through our own API. */
+  musicbrainz?: boolean;
+  /**
+   * True only when our API answered. Doubles as the "is there a server at all"
+   * signal: on a purely static host the config request fails and this is false.
+   */
   imageProxy: boolean;
 }
 
@@ -44,18 +52,30 @@ export async function searchSpotifyAlbums(
   query: string,
   options: RequestOptions & { limit?: number; market?: string } = {},
 ): Promise<AlbumSummary[]> {
+  return (await searchViaServer(query, options)).items;
+}
+
+/**
+ * Searches through our own API, which chooses Spotify or MusicBrainz itself.
+ * The client no longer has to know which providers are configured.
+ */
+export async function searchViaServer(
+  query: string,
+  options: RequestOptions & { limit?: number; market?: string } = {},
+): Promise<{ items: AlbumSummary[]; provider: ProviderId }> {
   const params = new URLSearchParams({ q: query, limit: String(options.limit ?? 12) });
   if (options.market) params.set('market', options.market);
   const data = await getJson<SearchResponse>(`/api/search?${params}`, options);
-  return data.results ?? [];
+  return { items: data.results ?? [], provider: data.provider ?? 'spotify' };
 }
 
 export async function getSpotifyAlbum(
   id: string,
-  options: RequestOptions & { market?: string } = {},
+  options: RequestOptions & { market?: string; source?: ProviderId } = {},
 ): Promise<Album> {
   const params = new URLSearchParams({ id });
   if (options.market) params.set('market', options.market);
+  if (options.source) params.set('source', options.source);
   const data = await getJson<AlbumResponse>(`/api/album?${params}`, options);
   return data.album;
 }

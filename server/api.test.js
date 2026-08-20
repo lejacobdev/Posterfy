@@ -6,7 +6,7 @@
  * request/response objects rather than booting a server.
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleApiRequest, hasSpotifyCredentials } from './api.js';
 import { parseEnv } from './env.js';
 
@@ -145,7 +145,10 @@ describe('spotify routes', () => {
     expect(json(res).error).toBe('invalid_id');
   });
 
-  it('reports when Spotify is not configured', async () => {
+  // Search deliberately does NOT fail when Spotify is unconfigured any more —
+  // it falls back to MusicBrainz. Only the album lookup, which needs a specific
+  // Spotify id, still reports the missing configuration.
+  it('reports missing configuration only where it cannot fall back', async () => {
     const id = process.env.SPOTIFY_CLIENT_ID;
     const secret = process.env.SPOTIFY_CLIENT_SECRET;
     delete process.env.SPOTIFY_CLIENT_ID;
@@ -153,7 +156,7 @@ describe('spotify routes', () => {
 
     expect(hasSpotifyCredentials()).toBe(false);
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/search?q=test'), res);
+    await handleApiRequest(mockReq('/api/album?id=4aawyAB9vmqN3uQ7FjRGTy'), res);
     expect(res.statusCode).toBe(501);
     expect(json(res).error).toBe('spotify_not_configured');
 
@@ -242,5 +245,141 @@ describe('rate limiting', () => {
     }
 
     expect(limited).toBe(true);
+  });
+});
+
+/**
+ * The keyless path. These mock the network so the routing and normalisation
+ * are verified without depending on MusicBrainz being reachable.
+ */
+describe('musicbrainz fallback', () => {
+  const MB_ID = 'f5093c06-23e3-404f-aeaa-40f72885ee3a';
+  let savedId;
+  let savedSecret;
+
+  function mockJson(payload) {
+    return vi.fn(
+      async () =>
+        new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    );
+  }
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    delete process.env.SPOTIFY_CLIENT_ID;
+    delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+  });
+
+  it('answers search from MusicBrainz when Spotify is not configured', async () => {
+    const fetchMock = mockJson({
+      'release-groups': [
+        {
+          id: MB_ID,
+          title: 'Northern Signal',
+          'first-release-date': '1985-05-13',
+          'artist-credit': [{ name: 'Halden Frost' }],
+        },
+      ],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=northern'), res);
+
+    expect(res.statusCode).toBe(200);
+    const body = json(res);
+    expect(body.provider).toBe('musicbrainz');
+    expect(body.results[0]).toMatchObject({
+      id: MB_ID,
+      source: 'musicbrainz',
+      title: 'Northern Signal',
+      artist: 'Halden Frost',
+    });
+    expect(body.results[0].coverUrl).toContain('coverartarchive.org');
+
+    // MusicBrainz asks for a descriptive User-Agent; a browser cannot set one,
+    // which is exactly why this call belongs on the server.
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers['User-Agent']).toContain('Posterfy');
+  });
+
+  it('routes a UUID album id to MusicBrainz and normalises the tracks', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockJson({
+        releases: [
+          {
+            id: MB_ID,
+            title: 'Northern Signal',
+            date: '1985-05-13',
+            'artist-credit': [{ name: 'Halden Frost' }],
+            'label-info': [{ label: { name: 'Meridian Sound' } }],
+            media: [
+              {
+                position: 1,
+                tracks: [
+                  { title: 'Long Way North', length: 200000 },
+                  { title: 'Signal Fires', length: 180000 },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq(`/api/album?id=${MB_ID}`), res);
+
+    expect(res.statusCode).toBe(200);
+    const album = json(res).album;
+    expect(album.source).toBe('musicbrainz');
+    expect(album.label).toBe('Meridian Sound');
+    expect(album.tracks).toHaveLength(2);
+    expect(album.tracks[0]).toMatchObject({ position: 1, title: 'Long Way North' });
+    expect(album.totalDurationMs).toBe(380000);
+  });
+
+  it('picks the release with the most tracks for a group', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockJson({
+        releases: [
+          { id: MB_ID, title: 'Single edit', media: [{ tracks: [{ title: 'Only' }] }] },
+          {
+            id: MB_ID,
+            title: 'Full album',
+            media: [{ tracks: [{ title: 'A' }, { title: 'B' }, { title: 'C' }] }],
+          },
+        ],
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq(`/api/album?id=${MB_ID}`), res);
+    expect(json(res).album.tracks).toHaveLength(3);
+  });
+
+  it('still rejects a Spotify id when Spotify is unconfigured', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/album?id=4aawyAB9vmqN3uQ7FjRGTy'), res);
+    expect(res.statusCode).toBe(501);
+    expect(json(res).error).toBe('spotify_not_configured');
+  });
+
+  it('advertises the keyless provider in the config', async () => {
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/config'), res);
+    expect(json(res)).toMatchObject({ spotify: false, musicbrainz: true, imageProxy: true });
   });
 });

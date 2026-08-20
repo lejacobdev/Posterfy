@@ -12,7 +12,7 @@ import {
   getProviderConfig,
   getSpotifyAlbum,
   parseSpotifyAlbumId,
-  searchSpotifyAlbums,
+  searchViaServer,
 } from './spotify';
 import { getMusicBrainzAlbum, searchMusicBrainzAlbums } from './musicbrainz';
 import { getAlbumDirect, hasStoredCredentials, searchAlbumsDirect } from './spotifyDirect';
@@ -33,22 +33,17 @@ export interface SearchOptions extends RequestOptions {
 }
 
 /**
- * Resolves which backend to use.
+ * Searches for albums.
  *
- * A server-side proxy is always preferred (the secret stays off the client);
- * credentials the visitor stored in their own browser are the fallback for
- * static deployments; MusicBrainz needs no credentials at all.
+ * Whenever our own API is reachable it answers, because it covers *both*
+ * providers server-side and picks between them itself. That keeps credentials
+ * off the client and avoids calling MusicBrainz from the browser, which is
+ * unreliable: it wants a descriptive User-Agent that a browser cannot set and
+ * rate-limits per IP.
+ *
+ * The browser-direct paths below are only for a purely static deployment,
+ * where there is no server to ask.
  */
-async function resolveProvider(
-  explicit?: ProviderId,
-): Promise<{ id: ProviderId; direct: boolean }> {
-  if (explicit) return { id: explicit, direct: explicit === 'spotify' && hasStoredCredentials() };
-  const config = await getProviderConfig();
-  if (config.spotify) return { id: 'spotify', direct: false };
-  if (hasStoredCredentials()) return { id: 'spotify', direct: true };
-  return { id: 'musicbrainz', direct: false };
-}
-
 export async function searchAlbums(
   query: string,
   options: SearchOptions = {},
@@ -56,33 +51,52 @@ export async function searchAlbums(
   const trimmed = query.trim();
   if (trimmed.length === 0) return { items: [], provider: 'musicbrainz', degraded: false };
 
-  const preferred = await resolveProvider(options.provider);
+  const config = await getProviderConfig();
+  const forced = options.provider;
 
-  if (preferred.id === 'spotify') {
+  // `imageProxy` is only true when our API actually answered, so it doubles as
+  // the "is there a server here at all" signal.
+  if (config.imageProxy && !forced) {
     try {
-      const items = preferred.direct
-        ? await searchAlbumsDirect(trimmed, options)
-        : await searchSpotifyAlbums(trimmed, options);
+      const { items, provider } = await searchViaServer(trimmed, options);
+      return { items, provider, degraded: provider !== 'spotify' && config.spotify };
+    } catch (error) {
+      if (isAbortError(error)) throw error;
+      // Fall through to whatever the browser can reach on its own.
+    }
+  }
+
+  if ((forced ?? 'spotify') === 'spotify' && hasStoredCredentials()) {
+    try {
+      const items = await searchAlbumsDirect(trimmed, options);
       return { items, provider: 'spotify', degraded: false };
     } catch (error) {
       if (isAbortError(error)) throw error;
-      // Spotify is optional: fall through to the keyless provider.
-      const items = await searchMusicBrainzAlbums(trimmed, options);
-      return { items, provider: 'musicbrainz', degraded: true };
     }
   }
 
   const items = await searchMusicBrainzAlbums(trimmed, options);
-  return { items, provider: 'musicbrainz', degraded: false };
+  return { items, provider: 'musicbrainz', degraded: true };
 }
 
 export async function getAlbum(
   summary: Pick<AlbumSummary, 'id' | 'source'>,
   options: RequestOptions & { market?: string } = {},
 ): Promise<Album> {
+  const config = await getProviderConfig();
+
+  // The API resolves both providers, so hand it the source and let it route.
+  if (config.imageProxy && (summary.source === 'spotify' || summary.source === 'musicbrainz')) {
+    try {
+      return await getSpotifyAlbum(summary.id, { ...options, source: summary.source });
+    } catch (error) {
+      if (isAbortError(error)) throw error;
+      // Fall through to the browser-direct paths below.
+    }
+  }
+
   if (summary.source === 'spotify') {
-    const config = await getProviderConfig();
-    if (!config.spotify && hasStoredCredentials()) return getAlbumDirect(summary.id, options);
+    if (hasStoredCredentials()) return getAlbumDirect(summary.id, options);
     return getSpotifyAlbum(summary.id, options);
   }
   if (summary.source === 'musicbrainz') return getMusicBrainzAlbum(summary.id, options);

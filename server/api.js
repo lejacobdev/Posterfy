@@ -237,19 +237,183 @@ function normalizeAlbum(album, tracks) {
   };
 }
 
+/* ---------------------------------------------------------------------------
+ * MusicBrainz + Cover Art Archive
+ *
+ * Runs here rather than in the browser for two reasons: MusicBrainz asks for a
+ * descriptive User-Agent (which a browser cannot set), and its one-request-per
+ * -second limit is far easier to honour from a single place. This is what makes
+ * search work on a deployment that has no Spotify credentials.
+ * ------------------------------------------------------------------------ */
+
+const MB_API = 'https://musicbrainz.org/ws/2';
+const COVER_ART = 'https://coverartarchive.org';
+const MB_USER_AGENT = 'Posterfy/1.0 ( https://github.com/lejacobdev/Posterfy )';
+
+let mbChain = Promise.resolve();
+let mbLastRun = 0;
+
+/** Serialises MusicBrainz calls with a minimum gap, as their policy requires. */
+function mbSchedule(task) {
+  const run = mbChain.then(async () => {
+    const wait = Math.max(0, mbLastRun + 1100 - Date.now());
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    mbLastRun = Date.now();
+    return task();
+  });
+  mbChain = run.catch(() => undefined);
+  return run;
+}
+
+async function musicbrainzRequest(path, params) {
+  const url = new URL(`${MB_API}${path}`);
+  url.searchParams.set('fmt', 'json');
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
+  }
+
+  const response = await mbSchedule(() =>
+    fetchWithTimeout(url, { headers: { 'User-Agent': MB_USER_AGENT, Accept: 'application/json' } }),
+  );
+
+  if (response.status === 503) {
+    throw Object.assign(new Error('musicbrainz_busy'), { status: 503, retryAfter: 2 });
+  }
+  if (!response.ok) {
+    throw Object.assign(new Error('musicbrainz_request_failed'), { status: 502 });
+  }
+  return response.json();
+}
+
+function mbCoverUrl(releaseGroupId, size) {
+  return `${COVER_ART}/release-group/${releaseGroupId}/front-${size}`;
+}
+
+function mbArtist(credits) {
+  if (!Array.isArray(credits)) return '';
+  return credits
+    .map((c) => `${c.name ?? ''}${c.joinphrase ?? ''}`)
+    .join('')
+    .trim();
+}
+
+async function musicbrainzSearch(query, limit) {
+  const data = await musicbrainzRequest('/release-group', {
+    query: `${query} AND (primarytype:album OR primarytype:ep)`,
+    limit,
+  });
+
+  return (data['release-groups'] ?? []).map((group) => ({
+    id: group.id,
+    source: 'musicbrainz',
+    title: group.title ?? '',
+    artist: mbArtist(group['artist-credit']),
+    releaseDate: group['first-release-date'] ?? '',
+    coverUrl: mbCoverUrl(group.id, 250),
+    totalTracks: 0,
+  }));
+}
+
+async function musicbrainzAlbum(releaseGroupId) {
+  const data = await musicbrainzRequest('/release', {
+    'release-group': releaseGroupId,
+    inc: 'recordings+artist-credits+labels',
+    limit: 25,
+  });
+
+  // Prefer the release with the most tracks, then the earliest date.
+  const release = [...(data.releases ?? [])].sort((a, b) => {
+    const at = (a.media ?? []).reduce((sum, m) => sum + (m.tracks?.length ?? 0), 0);
+    const bt = (b.media ?? []).reduce((sum, m) => sum + (m.tracks?.length ?? 0), 0);
+    if (at !== bt) return bt - at;
+    return (a.date ?? '9999').localeCompare(b.date ?? '9999');
+  })[0];
+
+  if (!release) throw Object.assign(new Error('album_not_found'), { status: 404 });
+
+  const tracks = [];
+  (release.media ?? []).forEach((disc, discIndex) => {
+    (disc.tracks ?? []).forEach((track, trackIndex) => {
+      const title = track.title ?? track.recording?.title ?? '';
+      if (!title) return;
+      tracks.push({
+        position: tracks.length + 1,
+        title,
+        durationMs: track.length ?? track.recording?.length ?? 0,
+        discNumber: disc.position ?? discIndex + 1,
+        explicit: false,
+      });
+      void trackIndex;
+    });
+  });
+
+  return {
+    id: releaseGroupId,
+    source: 'musicbrainz',
+    title: release.title ?? '',
+    artist: mbArtist(release['artist-credit']),
+    releaseDate: release.date ?? '',
+    coverUrl: mbCoverUrl(releaseGroupId, 500),
+    coverUrlHiRes: mbCoverUrl(releaseGroupId, 1200),
+    tracks,
+    genres: [],
+    label: release['label-info']?.[0]?.label?.name ?? null,
+    totalDurationMs: tracks.reduce((sum, t) => sum + t.durationMs, 0),
+    uri: null,
+    externalUrl: `https://musicbrainz.org/release-group/${releaseGroupId}`,
+  };
+}
+
 async function handleSearch(url, res) {
   const query = (url.searchParams.get('q') ?? '').trim();
   if (query.length < 1) return sendJson(res, 400, { error: 'missing_query' });
 
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 12)));
   const market = url.searchParams.get('market') ?? undefined;
-  const payload = await spotifyRequest('/search', { q: query, type: 'album', limit, market });
-  return sendJson(res, 200, { results: normalizeSearchResults(payload) }, 300);
+
+  // Spotify when it is configured, MusicBrainz otherwise. Either way the client
+  // gets the same shape back and never has to know which one answered.
+  if (hasSpotifyCredentials()) {
+    try {
+      const payload = await spotifyRequest('/search', { q: query, type: 'album', limit, market });
+      return sendJson(
+        res,
+        200,
+        { results: normalizeSearchResults(payload), provider: 'spotify' },
+        300,
+      );
+    } catch (error) {
+      // A Spotify outage should degrade to the keyless provider, not 500.
+      if (error?.status === 429) throw error;
+      console.warn('[posterfy:api] spotify search failed, falling back:', error?.message);
+    }
+  }
+
+  const results = await musicbrainzSearch(query, limit);
+  return sendJson(res, 200, { results, provider: 'musicbrainz' }, 300);
 }
+
+const MB_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const SPOTIFY_ID_RE = /^[A-Za-z0-9]{10,40}$/;
 
 async function handleAlbum(url, res) {
   const id = (url.searchParams.get('id') ?? '').trim();
-  if (!/^[A-Za-z0-9]{10,40}$/.test(id)) return sendJson(res, 400, { error: 'invalid_id' });
+  const source = (url.searchParams.get('source') ?? '').trim();
+
+  // MusicBrainz ids are UUIDs; Spotify ids are base62. The shape is enough to
+  // route on, and `source` settles it when a caller is explicit.
+  const isMusicBrainz = source === 'musicbrainz' || (source !== 'spotify' && MB_ID_RE.test(id));
+
+  if (isMusicBrainz) {
+    if (!MB_ID_RE.test(id)) return sendJson(res, 400, { error: 'invalid_id' });
+    const album = await musicbrainzAlbum(id);
+    return sendJson(res, 200, { album }, 3600);
+  }
+
+  if (!SPOTIFY_ID_RE.test(id)) return sendJson(res, 400, { error: 'invalid_id' });
+  if (!hasSpotifyCredentials()) {
+    return sendJson(res, 501, { error: 'spotify_not_configured' });
+  }
 
   const album = await spotifyRequest(`/albums/${id}`, {
     market: url.searchParams.get('market') ?? undefined,
@@ -370,7 +534,12 @@ export async function handleApiRequest(req, res) {
         return true;
 
       case '/api/config':
-        sendJson(res, 200, { spotify: hasSpotifyCredentials(), imageProxy: true }, 60);
+        sendJson(
+          res,
+          200,
+          { spotify: hasSpotifyCredentials(), musicbrainz: true, imageProxy: true },
+          60,
+        );
         return true;
 
       case '/api/search':
