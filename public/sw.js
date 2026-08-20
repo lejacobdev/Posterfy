@@ -6,7 +6,7 @@
  *   - build assets (hashed): cache first, they never change under one URL
  *   - API + album images: network only, so search always reflects reality
  *
- * `__BUILD_ID__` is replaced with the real build id at build time (see the
+ * The VERSION below is stamped with the real build id at build time (see the
  * `serviceWorkerBuildId` plugin in vite.config.ts). That matters: the cache
  * name has to change every deploy, otherwise the activate handler below can
  * never purge the previous one and a stale index.html keeps being served
