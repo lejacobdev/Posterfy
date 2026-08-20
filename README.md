@@ -78,12 +78,12 @@ The palette is quantised from the artwork with median cut (`src/lib/color/color.
 
 ### Data providers
 
-| Provider                        | Credentials | Used when                                     |
-| ------------------------------- | ----------- | --------------------------------------------- |
-| Spotify (via `/api/spotify/*`)  | server-side | `SPOTIFY_CLIENT_ID` / `SECRET` are set        |
-| Spotify (direct from browser)   | user's own  | Static deploy + credentials saved in Settings |
-| MusicBrainz + Cover Art Archive | none        | Always available as the fallback              |
-| Manual entry                    | none        | Anything the databases don't have             |
+| Provider                                  | Credentials | Used when                                     |
+| ----------------------------------------- | ----------- | --------------------------------------------- |
+| Spotify (via `/api/search`, `/api/album`) | server-side | `SPOTIFY_CLIENT_ID` / `SECRET` are set        |
+| Spotify (direct from browser)             | user's own  | Static deploy + credentials saved in Settings |
+| MusicBrainz + Cover Art Archive           | none        | Always available as the fallback              |
+| Manual entry                              | none        | Anything the databases don't have             |
 
 `/api/image` re-serves remote artwork with permissive CORS headers so exports never hit a tainted canvas. Only Spotify's and the Cover Art Archive's hosts are allowed through it.
 

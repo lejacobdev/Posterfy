@@ -373,11 +373,11 @@ export async function handleApiRequest(req, res) {
         sendJson(res, 200, { spotify: hasSpotifyCredentials(), imageProxy: true }, 60);
         return true;
 
-      case '/api/spotify/search':
+      case '/api/search':
         await handleSearch(url, res);
         return true;
 
-      case '/api/spotify/album':
+      case '/api/album':
         await handleAlbum(url, res);
         return true;
 

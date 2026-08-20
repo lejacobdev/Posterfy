@@ -1,6 +1,10 @@
 /**
- * Spotify provider — talks to our own `/api/spotify/*` endpoints, which hold
- * the client secret server-side.
+ * Spotify provider — talks to our own `/api/search` and `/api/album`
+ * endpoints, which hold the client secret server-side.
+ *
+ * The API surface is deliberately flat (one path segment): nested paths did
+ * not route reliably on every static host, and a flat surface behaves
+ * identically across the dev server, the Node server and serverless.
  */
 
 import type { Album, AlbumSummary } from '@/lib/types';
@@ -42,7 +46,7 @@ export async function searchSpotifyAlbums(
 ): Promise<AlbumSummary[]> {
   const params = new URLSearchParams({ q: query, limit: String(options.limit ?? 12) });
   if (options.market) params.set('market', options.market);
-  const data = await getJson<SearchResponse>(`/api/spotify/search?${params}`, options);
+  const data = await getJson<SearchResponse>(`/api/search?${params}`, options);
   return data.results ?? [];
 }
 
@@ -52,7 +56,7 @@ export async function getSpotifyAlbum(
 ): Promise<Album> {
   const params = new URLSearchParams({ id });
   if (options.market) params.set('market', options.market);
-  const data = await getJson<AlbumResponse>(`/api/spotify/album?${params}`, options);
+  const data = await getJson<AlbumResponse>(`/api/album?${params}`, options);
   return data.album;
 }
 

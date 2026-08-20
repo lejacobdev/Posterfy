@@ -107,7 +107,7 @@ describe('splat path normalisation', () => {
 
   it('recovers a nested route', async () => {
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/[...path]?path=spotify/search'), res);
+    await handleApiRequest(mockReq('/api/[...path]?path=search'), res);
     // Reaches the search handler, which rejects the missing query itself
     // rather than the request falling through to a 404.
     expect(res.statusCode).toBe(400);
@@ -116,7 +116,7 @@ describe('splat path normalisation', () => {
 
   it('leaves an already-correct path alone', async () => {
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/health?path=spotify/search'), res);
+    await handleApiRequest(mockReq('/api/health?path=search'), res);
     expect(res.statusCode).toBe(200);
     expect(json(res).status).toBe('ok');
   });
@@ -133,14 +133,14 @@ describe('splat path normalisation', () => {
 describe('spotify routes', () => {
   it('rejects a search with no query', async () => {
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/spotify/search'), res);
+    await handleApiRequest(mockReq('/api/search'), res);
     expect(res.statusCode).toBe(400);
     expect(json(res).error).toBe('missing_query');
   });
 
   it('rejects a malformed album id before calling out', async () => {
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/spotify/album?id=../../etc/passwd'), res);
+    await handleApiRequest(mockReq('/api/album?id=../../etc/passwd'), res);
     expect(res.statusCode).toBe(400);
     expect(json(res).error).toBe('invalid_id');
   });
@@ -153,7 +153,7 @@ describe('spotify routes', () => {
 
     expect(hasSpotifyCredentials()).toBe(false);
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/spotify/search?q=test'), res);
+    await handleApiRequest(mockReq('/api/search?q=test'), res);
     expect(res.statusCode).toBe(501);
     expect(json(res).error).toBe('spotify_not_configured');
 
