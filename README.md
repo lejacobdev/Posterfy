@@ -105,7 +105,22 @@ Or without Docker: `npm run build && npm start`.
 
 ### Vercel — full Spotify search
 
-`vercel.json` routes `/api/*` to `api/index.js`. Add `SPOTIFY_CLIENT_ID` and `SPOTIFY_CLIENT_SECRET` as project environment variables.
+The recommended target. Import the repository at [vercel.com/new](https://vercel.com/new); everything is preconfigured:
+
+- `api/[[...slug]].js` is a catch-all function, so every `/api/*` path reaches the shared handler with its URL intact.
+- `vercel.json` sets the build command, the SPA rewrite, cache headers for hashed assets and the security headers.
+- The build is detected from `package.json`; Node 20+ comes from the `engines` field.
+
+Add the credentials under **Settings → Environment Variables** (Production, Preview and Development):
+
+```
+SPOTIFY_CLIENT_ID       = your client id
+SPOTIFY_CLIENT_SECRET   = your client secret
+```
+
+Redeploy after adding them. `/api/config` reports `{"spotify": true}` once the server can see them, and the Settings page shows "Spotify search is enabled on this deployment."
+
+Finally, add the deployment URL to your Spotify app's redirect/allowed origins if you later add user login — the client-credentials flow used for search does not need it.
 
 ### GitHub Pages / Netlify — static
 

@@ -32,7 +32,12 @@ const IMAGE_HOST_ALLOWLIST = [
 ];
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-const REQUEST_TIMEOUT_MS = 12_000;
+/**
+ * Upstream timeout. Deliberately under the 10s ceiling a Vercel Hobby function
+ * gets, so a slow upstream returns our own JSON error rather than being killed
+ * by the platform with an opaque 504.
+ */
+const REQUEST_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS ?? 8000);
 
 let cachedToken = { value: null, expiresAt: 0 };
 
@@ -363,7 +368,9 @@ export async function handleApiRequest(req, res) {
     const status = error?.status ?? 500;
     const body = { error: error?.message ?? 'internal_error' };
     if (error?.retryAfter) res.setHeader('Retry-After', String(error.retryAfter));
-    if (status >= 500) console.error('[posterfy:api]', url.pathname, error);
+    // A missing Spotify config is a deployment choice, not a fault worth logging.
+    const expected = error?.message === 'spotify_not_configured';
+    if (status >= 500 && !expected) console.error('[posterfy:api]', url.pathname, error);
     sendJson(res, status, body);
     return true;
   }

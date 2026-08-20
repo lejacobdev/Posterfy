@@ -11,7 +11,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ENV_PATH = resolve(fileURLToPath(new URL('..', import.meta.url)), '.env');
+/**
+ * Project root. `import.meta.url` is a `file:` URL when Node runs this
+ * directly, but not under every test runner or bundler, so fall back to the
+ * working directory rather than throwing at import time.
+ */
+function projectRoot() {
+  try {
+    return fileURLToPath(new URL('..', import.meta.url));
+  } catch {
+    return process.cwd();
+  }
+}
 
 function parse(contents) {
   const values = {};
@@ -40,7 +51,7 @@ function parse(contents) {
 
 let loaded = false;
 
-export function loadEnv(path = ENV_PATH) {
+export function loadEnv(path = resolve(projectRoot(), '.env')) {
   if (loaded) return;
   loaded = true;
   if (!existsSync(path)) return;
