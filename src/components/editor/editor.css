@@ -27,17 +27,26 @@
   min-height: 320px;
 }
 
+/**
+ * The poster box is sized from its own definite height plus `--poster-ratio`
+ * (set from React), never from its content.
+ *
+ * The previous version left this a flex item with `width: auto` wrapping a
+ * child whose width came from `aspect-ratio * height`, where that height was a
+ * percentage of this box — circular. Resolving intrinsic width collapses the
+ * percentage to `auto`, so the ratio fell back to the canvas's intrinsic
+ * 300x150 (or to zero) and the preview vanished.
+ */
 .editor__preview {
-  display: flex;
   height: 100%;
+  aspect-ratio: var(--poster-ratio, 1 / 1.5);
   max-width: 100%;
+  min-width: 0;
 }
 
-/* Height drives the size here; `aspect-ratio` computes the width. */
 .editor__preview .poster-canvas {
+  width: 100%;
   height: 100%;
-  width: auto;
-  max-width: 100%;
 }
 
 .editor__stage-bar {

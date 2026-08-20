@@ -14,6 +14,9 @@ import { usePosterLabels, useI18n } from '@/i18n';
 import { cn } from '@/lib/utils/misc';
 import './PosterCanvas.css';
 
+/** Used only when the element reports no width at all, so something still draws. */
+const FALLBACK_WIDTH = 600;
+
 export interface PosterCanvasProps {
   spec: PosterSpec;
   className?: string;
@@ -58,7 +61,19 @@ export function PosterCanvas({
     });
     observer.observe(element);
     setContainerWidth(element.getBoundingClientRect().width);
-    return () => observer.disconnect();
+
+    // A zero first measurement must not leave the poster permanently unpainted.
+    // ResizeObserver only fires again if the box actually changes, so re-measure
+    // on the next frame and fall back to a sensible width if it is still zero.
+    const retry = requestAnimationFrame(() => {
+      const width = element.getBoundingClientRect().width;
+      setContainerWidth((current) => (current > 0 ? current : width > 0 ? width : FALLBACK_WIDTH));
+    });
+
+    return () => {
+      cancelAnimationFrame(retry);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {

@@ -6,9 +6,10 @@
  * download bar, so every control is reachable with one thumb.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import type { Album } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
+import { designHeight } from '@/lib/poster/formats';
 import { useI18n } from '@/i18n';
 import { releaseYear } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/misc';
@@ -46,6 +47,10 @@ export default function CreatePage() {
     reset,
   } = usePoster();
   const [tab, setTab] = useState<TabId>('design');
+  const posterRatio = useMemo(
+    () => designHeight(spec.options.format) / 1000,
+    [spec.options.format],
+  );
 
   // Keyboard shortcuts for undo/redo, the way a design tool should behave.
   useEffect(() => {
@@ -88,7 +93,12 @@ export default function CreatePage() {
           <div className="editor">
             <section className="editor__stage" aria-label={t('common.preview')}>
               <div className="editor__preview-wrap">
-                <div className="editor__preview">
+                <div
+                  className="editor__preview"
+                  // Gives the box a definite width from its height, so the
+                  // canvas never has to size itself from its own content.
+                  style={{ '--poster-ratio': `1 / ${posterRatio}` } as CSSProperties}
+                >
                   <PosterCanvas spec={spec} onPalette={handlePalette} />
                 </div>
               </div>
