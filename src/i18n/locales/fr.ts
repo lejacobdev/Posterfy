@@ -324,7 +324,7 @@ export const fr: Dictionary = {
       'L’affiche entière est dessinée avec l’API Canvas 2D sur une grille de 1000 unités de large. L’aperçu et l’export d’impression passent exactement par le même code, à une échelle près — d’où un résultat identique à ce que vous voyez, jusqu’à l’interlettrage.',
     privacyTitle: 'Vos données',
     privacyBody:
-      'Il n’y a ni système de comptes, ni analytique, ni bandeau cookies, car il n’y a aucun cookie à accepter. Vos réglages et votre affiche en cours restent dans le stockage local du navigateur.',
+      'Il n’y a ni système de comptes, ni bandeau cookies, car aucun cookie n’est déposé. Vos réglages et votre affiche en cours restent dans le stockage local du navigateur. Le site hébergé mesure des temps de chargement anonymes ; la politique de confidentialité en détaille le contenu.',
     openSourceTitle: 'Open source',
     openSourceBody:
       'Le code est consultable, forkable et auto-hébergeable. Sur votre machine, il fonctionne à l’identique.',
@@ -373,7 +373,7 @@ export const fr: Dictionary = {
     privacy: [
       {
         heading: 'En bref',
-        body: 'Posterfy n’a ni comptes, ni traçage, ni publicité, ni analytique. Les affiches sont générées sur votre appareil et ne sont jamais envoyées.',
+        body: 'Posterfy n’a ni comptes, ni traçage, ni publicité. Les affiches sont générées sur votre appareil et ne sont jamais envoyées. Seule la vitesse de chargement est mesurée, de façon anonyme, comme expliqué plus bas.',
       },
       {
         heading: 'Ce qui est stocké',
@@ -398,6 +398,10 @@ export const fr: Dictionary = {
       {
         heading: 'Contact',
         body: 'Toute question sur cette politique peut être posée via une issue dans le dépôt du projet.',
+      },
+      {
+        heading: 'Mesure de performance',
+        body: 'Sur la version hébergée, Vercel Speed Insights enregistre la vitesse de chargement des pages — des mesures comme le largest contentful paint, ainsi que le chemin, le pays et le type d’appareil. Aucun cookie n’est déposé, aucun identifiant n’est attribué, et rien ne peut être relié à vous ni à vos affiches. Les copies auto-hébergées n’envoient rien.',
       },
     ],
     terms: [

@@ -325,7 +325,7 @@ export const de: Dictionary = {
       'Das gesamte Poster wird mit der Canvas-2D-API auf einem Raster mit 1000 Einheiten Breite gezeichnet. Vorschau und Druckexport laufen durch exakt denselben Code, nur in anderem Maßstab – deshalb bekommst du genau das, was du siehst, bis zur Laufweite der Schrift.',
     privacyTitle: 'Deine Daten',
     privacyBody:
-      'Es gibt kein Kontosystem, keine Analyse und kein Cookie-Banner, weil es keine Cookies gibt, denen du zustimmen müsstest. Deine Einstellungen und dein aktuelles Poster liegen im lokalen Speicher deines Browsers und verlassen das Gerät nie.',
+      'Es gibt kein Kontosystem und kein Cookie-Banner, weil keine Cookies gesetzt werden. Deine Einstellungen und dein aktuelles Poster liegen im lokalen Speicher deines Browsers und verlassen das Gerät nie. Die gehostete Seite misst anonyme Ladezeiten; die Datenschutzerklärung sagt genau, was darin steht.',
     openSourceTitle: 'Open Source',
     openSourceBody:
       'Der Quellcode ist offen: lesen, forken, selbst hosten. Auf deinem eigenen Rechner läuft alles identisch.',
@@ -375,7 +375,7 @@ export const de: Dictionary = {
     privacy: [
       {
         heading: 'Kurzfassung',
-        body: 'Posterfy hat keine Konten, kein Tracking, keine Werbung und keine Analyse. Poster entstehen auf deinem Gerät und werden nie hochgeladen.',
+        body: 'Posterfy hat keine Konten, kein Tracking und keine Werbung. Poster entstehen auf deinem Gerät und werden nie hochgeladen. Gemessen wird ausschließlich die anonyme Ladegeschwindigkeit, siehe unten.',
       },
       {
         heading: 'Was gespeichert wird',
@@ -400,6 +400,10 @@ export const de: Dictionary = {
       {
         heading: 'Kontakt',
         body: 'Fragen zu dieser Erklärung kannst du als Issue im Projekt-Repository stellen.',
+      },
+      {
+        heading: 'Performance-Messung',
+        body: 'Auf der gehosteten Version erfasst Vercel Speed Insights, wie schnell Seiten laden — Werte wie Largest Contentful Paint sowie Pfad, Land und Geräteart. Dabei wird kein Cookie gesetzt und keine Kennung vergeben; ein Rückschluss auf dich oder deine Poster ist nicht möglich. Selbst gehostete Kopien senden gar nichts.',
       },
     ],
     terms: [

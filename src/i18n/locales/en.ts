@@ -327,7 +327,7 @@ export const en = {
       'The whole poster is drawn with the Canvas 2D API on a 1000-unit design grid. The preview and the print export run the exact same code, just at different scales — which is why what you see is exactly what you get, down to the letter spacing.',
     privacyTitle: 'Your data',
     privacyBody:
-      'There is no account system, no analytics and no cookie banner, because there are no cookies to consent to. Your settings and your current poster live in your browser’s local storage and never leave the device.',
+      'There is no account system, no cookie banner and nothing to consent to, because no cookies are set. Your settings and your current poster live in your browser’s local storage and never leave the device. The hosted site measures anonymous page-speed timings; the privacy policy spells out exactly what those contain.',
     openSourceTitle: 'Open source',
     openSourceBody:
       'The source is available to read, fork and self-host. Run it on your own machine and it works identically.',
@@ -376,7 +376,7 @@ export const en = {
     privacy: [
       {
         heading: 'The short version',
-        body: 'Posterfy has no accounts, no tracking, no advertising and no analytics. Posters are generated on your device and never uploaded.',
+        body: 'Posterfy has no accounts, no tracking and no advertising. Posters are generated on your device and never uploaded. The only measurement is anonymous page-speed timing, described below.',
       },
       {
         heading: 'What is stored',
@@ -401,6 +401,10 @@ export const en = {
       {
         heading: 'Contact',
         body: 'Questions about this policy can be raised as an issue in the project repository.',
+      },
+      {
+        heading: 'Performance measurement',
+        body: 'On the hosted version, Vercel Speed Insights records how quickly pages load — timings such as largest contentful paint, plus the route path, the country and the kind of device. It sets no cookie, assigns no identifier, and cannot be tied back to you or to the posters you make. Self-hosted copies send nothing at all.',
       },
     ],
     terms: [

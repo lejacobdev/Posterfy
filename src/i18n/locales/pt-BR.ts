@@ -324,7 +324,7 @@ export const ptBR: Dictionary = {
       'O pôster inteiro é desenhado com a API Canvas 2D em uma grade de 1000 unidades de largura. A prévia e a exportação para impressão passam pelo mesmo código, só que em escalas diferentes — por isso o resultado é exatamente o que você vê, até o espaçamento entre letras.',
     privacyTitle: 'Seus dados',
     privacyBody:
-      'Não há sistema de contas, análise de uso nem aviso de cookies, porque não existem cookies para aceitar. Suas configurações e o pôster atual ficam no armazenamento local do navegador.',
+      'Não há sistema de contas nem aviso de cookies, porque nenhum cookie é definido. Suas configurações e o pôster atual ficam no armazenamento local do navegador. O site hospedado mede tempos de carregamento anônimos; a política de privacidade detalha o que eles contêm.',
     openSourceTitle: 'Código aberto',
     openSourceBody:
       'O código está disponível para ler, bifurcar e hospedar por conta própria. Na sua máquina ele funciona igual.',
@@ -373,7 +373,7 @@ export const ptBR: Dictionary = {
     privacy: [
       {
         heading: 'A versão curta',
-        body: 'O Posterfy não tem contas, rastreamento, publicidade nem análise de uso. Os pôsteres são gerados no seu aparelho e nunca enviados.',
+        body: 'O Posterfy não tem contas, rastreamento nem publicidade. Os pôsteres são gerados no seu aparelho e nunca enviados. A única medição é a velocidade de carregamento, de forma anônima, como explicado abaixo.',
       },
       {
         heading: 'O que fica salvo',
@@ -398,6 +398,10 @@ export const ptBR: Dictionary = {
       {
         heading: 'Contato',
         body: 'Dúvidas sobre esta política podem ser abertas como issue no repositório do projeto.',
+      },
+      {
+        heading: 'Medição de desempenho',
+        body: 'Na versão hospedada, o Vercel Speed Insights registra a rapidez de carregamento das páginas — métricas como o largest contentful paint, além da rota, do país e do tipo de aparelho. Não usa cookies, não atribui identificadores e não pode ser ligado a você nem aos pôsteres que você cria. Cópias auto-hospedadas não enviam nada.',
       },
     ],
     terms: [

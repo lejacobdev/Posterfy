@@ -323,7 +323,7 @@ export const it: Dictionary = {
       'L’intero poster viene disegnato con l’API Canvas 2D su una griglia larga 1000 unità. Anteprima ed export di stampa passano dallo stesso identico codice, solo a scale diverse: per questo ottieni esattamente ciò che vedi, fino alla spaziatura tra le lettere.',
     privacyTitle: 'I tuoi dati',
     privacyBody:
-      'Non c’è un sistema di account, né analytics, né banner sui cookie, perché non ci sono cookie da accettare. Impostazioni e poster in corso restano nell’archivio locale del browser.',
+      'Non c’è un sistema di account né un banner sui cookie, perché non viene impostato alcun cookie. Impostazioni e poster in corso restano nell’archivio locale del browser. Il sito ospitato misura tempi di caricamento anonimi; l’informativa sulla privacy spiega esattamente cosa contengono.',
     openSourceTitle: 'Open source',
     openSourceBody:
       'Il codice si può leggere, forkare e ospitare in proprio. Sulla tua macchina funziona in modo identico.',
@@ -372,7 +372,7 @@ export const it: Dictionary = {
     privacy: [
       {
         heading: 'In breve',
-        body: 'Posterfy non ha account, tracciamento, pubblicità né analytics. I poster vengono generati sul tuo dispositivo e non vengono mai caricati.',
+        body: 'Posterfy non ha account, tracciamento né pubblicità. I poster vengono generati sul tuo dispositivo e non vengono mai caricati. L’unica misurazione è la velocità di caricamento, in forma anonima, come spiegato sotto.',
       },
       {
         heading: 'Cosa viene salvato',
@@ -397,6 +397,10 @@ export const it: Dictionary = {
       {
         heading: 'Contatti',
         body: 'Le domande su questa informativa possono essere aperte come issue nel repository del progetto.',
+      },
+      {
+        heading: 'Misurazione delle prestazioni',
+        body: 'Nella versione ospitata, Vercel Speed Insights registra la velocità di caricamento delle pagine — valori come il largest contentful paint, oltre al percorso, al paese e al tipo di dispositivo. Non imposta cookie, non assegna identificatori e non può essere ricondotto a te o ai poster che crei. Le copie self-hosted non inviano nulla.',
       },
     ],
     terms: [

@@ -324,7 +324,7 @@ export const es: Dictionary = {
       'El póster entero se dibuja con la API Canvas 2D sobre una retícula de 1000 unidades de ancho. La vista previa y la exportación para imprenta usan exactamente el mismo código, solo que a distinta escala: por eso obtienes justo lo que ves, hasta el espaciado entre letras.',
     privacyTitle: 'Tus datos',
     privacyBody:
-      'No hay sistema de cuentas, ni analítica, ni aviso de cookies, porque no hay cookies que aceptar. Tus ajustes y tu póster actual viven en el almacenamiento local del navegador y nunca salen del dispositivo.',
+      'No hay sistema de cuentas ni aviso de cookies, porque no se establece ninguna. Tus ajustes y tu póster actual viven en el almacenamiento local del navegador y nunca salen del dispositivo. El sitio alojado mide tiempos de carga anónimos; la política de privacidad detalla qué contienen.',
     openSourceTitle: 'Código abierto',
     openSourceBody:
       'El código está disponible para leerlo, bifurcarlo y alojarlo tú mismo. En tu propia máquina funciona igual.',
@@ -374,7 +374,7 @@ export const es: Dictionary = {
     privacy: [
       {
         heading: 'La versión corta',
-        body: 'Posterfy no tiene cuentas, ni rastreo, ni publicidad, ni analítica. Los pósteres se generan en tu dispositivo y nunca se suben.',
+        body: 'Posterfy no tiene cuentas, ni rastreo, ni publicidad. Los pósteres se generan en tu dispositivo y nunca se suben. Lo único que se mide es la velocidad de carga de forma anónima, como se explica abajo.',
       },
       {
         heading: 'Qué se guarda',
@@ -399,6 +399,10 @@ export const es: Dictionary = {
       {
         heading: 'Contacto',
         body: 'Cualquier duda sobre esta política puede plantearse como incidencia en el repositorio del proyecto.',
+      },
+      {
+        heading: 'Medición de rendimiento',
+        body: 'En la versión alojada, Vercel Speed Insights registra la rapidez de carga de las páginas: métricas como el largest contentful paint, además de la ruta, el país y el tipo de dispositivo. No usa cookies ni asigna identificadores, y no puede vincularse contigo ni con los pósteres que creas. Las copias autoalojadas no envían nada.',
       },
     ],
     terms: [

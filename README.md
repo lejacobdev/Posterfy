@@ -20,7 +20,7 @@ Everything is rendered in the browser with the Canvas 2D API — no uploads, no 
 - **Works on a phone** — the complete editor, not a reduced version: sticky preview, tabbed panels, touch-sized controls and a persistent download bar.
 - **Six languages**, detected from the browser and the device time zone: English, Deutsch, Español, Français, Português (BR), Italiano.
 - **Installable PWA** — after the first visit it edits and exports offline.
-- **Private by construction** — no accounts, no analytics, no cookies. Settings and the current poster live in `localStorage` and nowhere else.
+- **Private by construction** — no accounts, no tracking, no cookies. Settings and the current poster live in `localStorage` and nowhere else. The hosted site reports anonymous Core Web Vitals through Vercel Speed Insights; a self-hosted copy sends nothing.
 
 ## Quick start
 
