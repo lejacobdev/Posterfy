@@ -703,6 +703,20 @@ describe('spotify resilience', () => {
     expect(json2(res).reason).toBe('spotify_request_failed:403');
   });
 
+  it("carries Spotify's own error message when it fell back with one", async () => {
+    const { fetchMock } = spotifyFetch([
+      json({ error: { status: 400, message: 'Invalid market code' } }, 400),
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers&market=ZZ'), res);
+
+    const body = json2(res);
+    expect(body.reason).toBe('spotify_request_failed:400');
+    expect(body.detail).toBe('Invalid market code');
+  });
+
   it('carries no reason when Spotify answered', async () => {
     const { fetchMock } = spotifyFetch([]);
     vi.stubGlobal('fetch', fetchMock);
@@ -777,6 +791,34 @@ describe('spotify probe', () => {
       ok: false,
       reason: 'spotify_request_failed',
       status: 403,
+    });
+  });
+
+  it("surfaces Spotify's own error message alongside the status", async () => {
+    // The status code alone does not say *why* a 400 happened — an unsupported
+    // market, a malformed query, a restricted app all look identical without
+    // it, and that ambiguity is exactly what made the market=DE failure hard
+    // to diagnose from outside a server log.
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) =>
+        String(input).includes('accounts.spotify.com')
+          ? new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }), { status: 200 })
+          : new Response(
+              JSON.stringify({ error: { status: 400, message: 'Invalid market code' } }),
+              { status: 400 },
+            ),
+      ),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?spotify=1&market=DE'), res);
+    expect(json2(res)).toMatchObject({
+      ok: false,
+      status: 400,
+      detail: 'Invalid market code',
     });
   });
 

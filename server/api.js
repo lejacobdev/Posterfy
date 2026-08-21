@@ -245,9 +245,25 @@ async function spotifyRequest(path, searchParams = {}, deadline = newDeadline(),
     return spotifyRequest(path, searchParams, deadline, attempt + 1);
   }
   if (!response.ok) {
-    throw Object.assign(new Error('spotify_request_failed'), { status: response.status });
+    // Spotify's own error body says *why* a 400/403 happened (an unsupported
+    // market, a malformed query, a restricted app) — the status code alone
+    // does not. Best-effort: a non-JSON body just leaves detail undefined.
+    const detail = await spotifyErrorDetail(response);
+    throw Object.assign(new Error('spotify_request_failed'), {
+      status: response.status,
+      detail,
+    });
   }
   return response.json();
+}
+
+async function spotifyErrorDetail(response) {
+  try {
+    const data = await response.json();
+    return data?.error?.message ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function pickImage(images, preference = 'large') {
@@ -564,6 +580,7 @@ async function probeSpotify({ market, limit } = {}) {
       ok: false,
       reason: error?.message ?? 'unknown',
       status: error?.status ?? null,
+      detail: error?.detail ?? null,
       market: market ?? null,
       ms: Date.now() - startedAt,
     };
@@ -577,6 +594,7 @@ async function handleSearch(url, res) {
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 12)));
   const market = url.searchParams.get('market') ?? undefined;
   let degradedReason = null;
+  let degradedDetail = null;
   // Shared by every upstream call this request makes, Spotify and MusicBrainz
   // alike, so a slow link anywhere in the chain leaves less for what follows
   // instead of each one getting a full timeout of its own.
@@ -603,8 +621,10 @@ async function handleSearch(url, res) {
       // The status is the whole diagnosis — 401 means the credentials are
       // dead, 403 means the app is restricted — so log it, not just the name.
       degradedReason = `${error?.message ?? 'unknown'}:${error?.status ?? '?'}`;
+      degradedDetail = error?.detail ?? null;
       console.warn(
         `[posterfy:api] spotify search failed (${degradedReason}), falling back to musicbrainz`,
+        degradedDetail ? `— ${degradedDetail}` : '',
       );
     }
   }
@@ -620,12 +640,18 @@ async function handleSearch(url, res) {
   }
 
   const results = await musicbrainzSearch(query, limit, deadline);
-  // `reason` travels with the response so a fallback can be diagnosed from a
-  // browser, without access to the server logs.
+  // `reason` (and `detail`, Spotify's own error message when it had one)
+  // travel with the response so a fallback can be diagnosed from a browser,
+  // without access to the server logs.
   return sendJson(
     res,
     200,
-    { results, provider: 'musicbrainz', ...(degradedReason ? { reason: degradedReason } : {}) },
+    {
+      results,
+      provider: 'musicbrainz',
+      ...(degradedReason ? { reason: degradedReason } : {}),
+      ...(degradedDetail ? { detail: degradedDetail } : {}),
+    },
     300,
   );
 }

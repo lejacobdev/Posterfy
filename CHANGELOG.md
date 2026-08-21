@@ -33,6 +33,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- A Spotify search failure that falls back to MusicBrainz now carries Spotify's
+  own error message (`detail`), not just the HTTP status. A 400 and a 403 used
+  to look identical from outside a server log — an unsupported market, a
+  malformed query and a restricted app all just read `spotify_request_failed`
+  — so diagnosing one meant guessing. `/api/health?spotify=1` reports the same
+  detail for a probed failure.
 - Search and album lookups no longer get killed by Vercel's 10-second function
   ceiling. Retries and fallbacks (Spotify retry, MusicBrainz fallback, Spotify
   cover cross-lookup, track pagination) each used to get a full timeout of
