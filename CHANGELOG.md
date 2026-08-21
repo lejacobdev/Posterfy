@@ -33,6 +33,19 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Search and album lookups no longer get killed by Vercel's 10-second function
+  ceiling. Retries and fallbacks (Spotify retry, MusicBrainz fallback, Spotify
+  cover cross-lookup, track pagination) each used to get a full timeout of
+  their own with no shared limit, so a chain of them could add up to well past
+  10s and have the whole function killed with an opaque platform error instead
+  of our own. Every upstream call in a chain now shares one deadline: a link
+  that runs long leaves less for what follows, and once too little remains a
+  further call is skipped rather than attempted — returning a clear, fast
+  error, or in the case of track pagination, whatever pages were already
+  fetched, rather than nothing. `/api/image` is unaffected by this budget: it's
+  a single hop with nothing to fall back to afterward, so it keeps its own
+  larger, independent timeout — raised, since Cover Art Archive's redirect to
+  archive.org is occasionally slow enough on its own to need it.
 - Album search no longer degrades to MusicBrainz over a Spotify hiccup. A
   cached token rotated while a serverless instance stayed warm, or a single
   Spotify 5xx, used to drop the whole search to the keyless provider; both are

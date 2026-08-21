@@ -32,12 +32,53 @@ const IMAGE_HOST_ALLOWLIST = [
 ];
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
-/**
- * Upstream timeout. Deliberately under the 10s ceiling a Vercel Hobby function
- * gets, so a slow upstream returns our own JSON error rather than being killed
- * by the platform with an opaque 504.
- */
+/** Fallback timeout for any call that does not (yet) pass an explicit one. */
 const REQUEST_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS ?? 8000);
+
+/**
+ * Total time a request handler may spend calling upstreams, kept safely under
+ * the 10-second ceiling a Vercel function gets. `/api/search` and `/api/album`
+ * can each chain several upstream calls — Spotify, a retry of Spotify,
+ * MusicBrainz, a Spotify cover lookup — and none of them used to share a
+ * budget, so a slow link anywhere in the chain could add up to well past 10s
+ * and get the whole function killed with an opaque platform error instead of
+ * our own clear one. Every call in a chain now takes a `deadline` (an absolute
+ * timestamp) instead of a fixed timeout, so the chain adapts to what actually
+ * happened rather than always spending the same amount regardless: a fast
+ * Spotify response leaves more room for a MusicBrainz fallback; a slow one
+ * leaves less, and eventually an upstream call is skipped rather than
+ * attempted, so the handler returns its own error instead of being killed.
+ */
+function requestBudgetMs() {
+  return Number(process.env.REQUEST_BUDGET_MS ?? 8500);
+}
+
+/**
+ * A proxied image is one hop with nothing to fall back to afterward, so unlike
+ * the chains above it can safely spend nearly the whole ceiling rather than
+ * sharing their smaller multi-hop budget. It still needs its own bound: Cover
+ * Art Archive redirects to archive.org, which is occasionally slow enough that
+ * an unbounded wait would hang the function outright.
+ */
+const IMAGE_TIMEOUT_MS = Number(process.env.IMAGE_TIMEOUT_MS ?? 9200);
+
+function newDeadline() {
+  return Date.now() + requestBudgetMs();
+}
+
+/** Whether at least `minMs` remains before `deadline`. */
+function hasBudget(deadline, minMs = 600) {
+  return deadline - Date.now() >= minMs;
+}
+
+/** Time left before `deadline`, for use as a fetch timeout once hasBudget() passed. */
+function timeLeft(deadline) {
+  return Math.max(0, deadline - Date.now());
+}
+
+function budgetExhausted() {
+  return Object.assign(new Error('upstream_timeout'), { status: 503, retryAfter: 2 });
+}
 
 let cachedToken = { value: null, expiresAt: 0 };
 
@@ -112,23 +153,28 @@ export function hasSpotifyCredentials() {
 }
 
 /** Client-credentials token, cached until a minute before it expires. */
-async function getSpotifyToken() {
+async function getSpotifyToken(deadline) {
   if (cachedToken.value && Date.now() < cachedToken.expiresAt) return cachedToken.value;
   if (!hasSpotifyCredentials())
     throw Object.assign(new Error('spotify_not_configured'), { status: 501 });
+  if (!hasBudget(deadline)) throw budgetExhausted();
 
   const credentials = Buffer.from(
     `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`,
   ).toString('base64');
 
-  const response = await fetchWithTimeout(SPOTIFY_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const response = await fetchWithTimeout(
+    SPOTIFY_TOKEN_URL,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: 'grant_type=client_credentials',
     },
-    body: 'grant_type=client_credentials',
-  });
+    timeLeft(deadline),
+  );
 
   if (!response.ok) {
     throw Object.assign(new Error('spotify_auth_failed'), { status: 502 });
@@ -143,9 +189,10 @@ async function getSpotifyToken() {
 
 /**
  * Calls the Spotify API, retrying once for the two failures that a second
- * attempt actually fixes.
+ * attempt actually fixes — but only while `deadline` allows it, so a retry can
+ * never be what pushes the handler past Vercel's ceiling.
  *
- * Without the retry either one degrades the whole search to the keyless
+ * Without the retry either failure degrades the whole search to the keyless
  * provider, which is why search could answer from Spotify one moment and
  * MusicBrainz the next:
  *
@@ -156,22 +203,35 @@ async function getSpotifyToken() {
  *
  * Everything else (400, 403, 429) means a second identical call would fail
  * the same way, so it is reported rather than repeated.
+ *
+ * `deadline` defaults to a fresh budget so an unmigrated caller still works,
+ * but every call site in this file passes the one its handler is already
+ * spending, so a whole chain shares one clock rather than each link getting
+ * its own.
  */
-async function spotifyRequest(path, searchParams = {}, attempt = 0) {
-  const token = await getSpotifyToken();
+async function spotifyRequest(path, searchParams = {}, deadline = newDeadline(), attempt = 0) {
+  if (!hasBudget(deadline)) throw budgetExhausted();
+
+  const token = await getSpotifyToken(deadline);
   const url = new URL(`${SPOTIFY_API}${path}`);
   for (const [key, value] of Object.entries(searchParams)) {
     if (value !== undefined && value !== null && value !== '')
       url.searchParams.set(key, String(value));
   }
 
-  const response = await fetchWithTimeout(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  if (!hasBudget(deadline)) throw budgetExhausted();
+
+  const response = await fetchWithTimeout(
+    url,
+    { headers: { Authorization: `Bearer ${token}` } },
+    timeLeft(deadline),
+  );
 
   if (response.status === 401) {
     cachedToken = { value: null, expiresAt: 0 };
-    if (attempt === 0) return spotifyRequest(path, searchParams, attempt + 1);
+    if (attempt === 0 && hasBudget(deadline)) {
+      return spotifyRequest(path, searchParams, deadline, attempt + 1);
+    }
     // 502, not 401: the caller is not the one who failed to authenticate.
     throw Object.assign(new Error('spotify_unauthorized'), { status: 502 });
   }
@@ -181,8 +241,8 @@ async function spotifyRequest(path, searchParams = {}, attempt = 0) {
       retryAfter: Number(response.headers.get('retry-after') ?? 5),
     });
   }
-  if (response.status >= 500 && attempt === 0) {
-    return spotifyRequest(path, searchParams, attempt + 1);
+  if (response.status >= 500 && attempt === 0 && hasBudget(deadline)) {
+    return spotifyRequest(path, searchParams, deadline, attempt + 1);
   }
   if (!response.ok) {
     throw Object.assign(new Error('spotify_request_failed'), { status: response.status });
@@ -215,16 +275,19 @@ function normalizeSearchResults(payload) {
   }));
 }
 
-async function fetchAllTracks(albumId, firstPage) {
+async function fetchAllTracks(albumId, firstPage, deadline) {
   const tracks = [...(firstPage?.items ?? [])];
   let next = firstPage?.next;
   let guard = 0;
-  while (next && guard < 10) {
+  // A box set could need several pages; once the budget is gone, returning
+  // what has been fetched so far beats throwing away a mostly-complete list.
+  while (next && guard < 10 && hasBudget(deadline)) {
     guard += 1;
-    const page = await spotifyRequest(`/albums/${albumId}/tracks`, {
-      limit: 50,
-      offset: tracks.length,
-    });
+    const page = await spotifyRequest(
+      `/albums/${albumId}/tracks`,
+      { limit: 50, offset: tracks.length },
+      deadline,
+    );
     tracks.push(...(page.items ?? []));
     next = page.next;
   }
@@ -289,16 +352,29 @@ function mbSchedule(task) {
   return run;
 }
 
-async function musicbrainzRequest(path, params) {
+async function musicbrainzRequest(path, params, deadline = newDeadline()) {
+  // MusicBrainz calls queue behind each other (see mbSchedule) to honour its
+  // one-request-per-second policy, so check before even joining that queue —
+  // a request with no time left would either wait for nothing or, worse, wait
+  // long enough to blow the ceiling on its own.
+  if (!hasBudget(deadline, 800)) throw budgetExhausted();
+
   const url = new URL(`${MB_API}${path}`);
   url.searchParams.set('fmt', 'json');
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== '') url.searchParams.set(key, String(value));
   }
 
-  const response = await mbSchedule(() =>
-    fetchWithTimeout(url, { headers: { 'User-Agent': MB_USER_AGENT, Accept: 'application/json' } }),
-  );
+  const response = await mbSchedule(() => {
+    // Re-checked here: the wait inside mbSchedule can itself take up to
+    // 1100ms, which may have used up what little budget was left.
+    if (!hasBudget(deadline, 300)) throw budgetExhausted();
+    return fetchWithTimeout(
+      url,
+      { headers: { 'User-Agent': MB_USER_AGENT, Accept: 'application/json' } },
+      timeLeft(deadline),
+    );
+  });
 
   if (response.status === 503) {
     throw Object.assign(new Error('musicbrainz_busy'), { status: 503, retryAfter: 2 });
@@ -343,13 +419,20 @@ function normaliseTitle(value) {
  * Finds the Spotify cover for an album by name. Returns null rather than
  * guessing when nothing matches confidently, so a wrong sleeve is never shown.
  */
-async function spotifyCoverFor(title, artist) {
+async function spotifyCoverFor(title, artist, deadline = newDeadline()) {
   if (!hasSpotifyCredentials() || !title) return null;
+  // A nice-to-have enrichment, not the album fetch itself: skip it outright
+  // once budget is tight rather than spending what little is left on it.
+  if (!hasBudget(deadline, 800)) return null;
 
   const query = artist ? `album:${title} artist:${artist}` : `album:${title}`;
   let items = [];
   try {
-    const payload = await spotifyRequest('/search', { q: query, type: 'album', limit: 5 });
+    const payload = await spotifyRequest(
+      '/search',
+      { q: query, type: 'album', limit: 5 },
+      deadline,
+    );
     items = payload?.albums?.items ?? [];
   } catch (error) {
     console.warn('[posterfy:api] spotify cover lookup failed:', error?.message);
@@ -372,11 +455,12 @@ async function spotifyCoverFor(title, artist) {
   };
 }
 
-async function musicbrainzSearch(query, limit) {
-  const data = await musicbrainzRequest('/release-group', {
-    query: `${query} AND (primarytype:album OR primarytype:ep)`,
-    limit,
-  });
+async function musicbrainzSearch(query, limit, deadline = newDeadline()) {
+  const data = await musicbrainzRequest(
+    '/release-group',
+    { query: `${query} AND (primarytype:album OR primarytype:ep)`, limit },
+    deadline,
+  );
 
   return (data['release-groups'] ?? []).map((group) => ({
     id: group.id,
@@ -389,12 +473,12 @@ async function musicbrainzSearch(query, limit) {
   }));
 }
 
-async function musicbrainzAlbum(releaseGroupId) {
-  const data = await musicbrainzRequest('/release', {
-    'release-group': releaseGroupId,
-    inc: 'recordings+artist-credits+labels',
-    limit: 25,
-  });
+async function musicbrainzAlbum(releaseGroupId, deadline = newDeadline()) {
+  const data = await musicbrainzRequest(
+    '/release',
+    { 'release-group': releaseGroupId, inc: 'recordings+artist-credits+labels', limit: 25 },
+    deadline,
+  );
 
   // Prefer the release with the most tracks, then the earliest date.
   const release = [...(data.releases ?? [])].sort((a, b) => {
@@ -426,7 +510,7 @@ async function musicbrainzAlbum(releaseGroupId) {
   const artist = mbArtist(release['artist-credit']);
 
   // One extra request per album selection, which buys consistent artwork.
-  const spotifyArt = await spotifyCoverFor(title, artist);
+  const spotifyArt = await spotifyCoverFor(title, artist, deadline);
 
   return {
     id: releaseGroupId,
@@ -466,7 +550,7 @@ async function probeSpotify({ market, limit } = {}) {
   const startedAt = Date.now();
   const params = { q: 'abbey road', type: 'album', limit: limit ?? 1, market };
   try {
-    const payload = await spotifyRequest('/search', params);
+    const payload = await spotifyRequest('/search', params, newDeadline());
     return {
       configured: true,
       ok: true,
@@ -493,12 +577,20 @@ async function handleSearch(url, res) {
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 12)));
   const market = url.searchParams.get('market') ?? undefined;
   let degradedReason = null;
+  // Shared by every upstream call this request makes, Spotify and MusicBrainz
+  // alike, so a slow link anywhere in the chain leaves less for what follows
+  // instead of each one getting a full timeout of its own.
+  const deadline = newDeadline();
 
   // Spotify when it is configured, MusicBrainz otherwise. Either way the client
   // gets the same shape back and never has to know which one answered.
   if (hasSpotifyCredentials()) {
     try {
-      const payload = await spotifyRequest('/search', { q: query, type: 'album', limit, market });
+      const payload = await spotifyRequest(
+        '/search',
+        { q: query, type: 'album', limit, market },
+        deadline,
+      );
       return sendJson(
         res,
         200,
@@ -517,7 +609,17 @@ async function handleSearch(url, res) {
     }
   }
 
-  const results = await musicbrainzSearch(query, limit);
+  if (!hasBudget(deadline, 800)) {
+    // Whatever Spotify spent has left too little to also try MusicBrainz.
+    // Saying so plainly beats attempting a call almost certain to be killed
+    // by the platform instead of answered by us.
+    throw Object.assign(new Error(degradedReason ?? 'search_timeout'), {
+      status: 503,
+      retryAfter: 2,
+    });
+  }
+
+  const results = await musicbrainzSearch(query, limit, deadline);
   // `reason` travels with the response so a fallback can be diagnosed from a
   // browser, without access to the server logs.
   return sendJson(
@@ -538,10 +640,11 @@ async function handleAlbum(url, res) {
   // MusicBrainz ids are UUIDs; Spotify ids are base62. The shape is enough to
   // route on, and `source` settles it when a caller is explicit.
   const isMusicBrainz = source === 'musicbrainz' || (source !== 'spotify' && MB_ID_RE.test(id));
+  const deadline = newDeadline();
 
   if (isMusicBrainz) {
     if (!MB_ID_RE.test(id)) return sendJson(res, 400, { error: 'invalid_id' });
-    const album = await musicbrainzAlbum(id);
+    const album = await musicbrainzAlbum(id, deadline);
     return sendJson(res, 200, { album }, 3600);
   }
 
@@ -550,16 +653,19 @@ async function handleAlbum(url, res) {
     return sendJson(res, 501, { error: 'spotify_not_configured' });
   }
 
-  const album = await spotifyRequest(`/albums/${id}`, {
-    market: url.searchParams.get('market') ?? undefined,
-  });
-  const tracks = await fetchAllTracks(id, album.tracks);
+  const album = await spotifyRequest(
+    `/albums/${id}`,
+    { market: url.searchParams.get('market') ?? undefined },
+    deadline,
+  );
+  const tracks = await fetchAllTracks(id, album.tracks, deadline);
   let normalized = normalizeAlbum(album, tracks);
 
-  // Album genres are usually empty on Spotify; the artist carries them instead.
-  if (normalized.genres.length === 0 && album.artists?.[0]?.id) {
+  // Album genres are usually empty on Spotify; the artist carries them
+  // instead. Optional enrichment, so only attempted while budget allows it.
+  if (normalized.genres.length === 0 && album.artists?.[0]?.id && hasBudget(deadline, 800)) {
     try {
-      const artist = await spotifyRequest(`/artists/${album.artists[0].id}`);
+      const artist = await spotifyRequest(`/artists/${album.artists[0].id}`, {}, deadline);
       normalized = { ...normalized, genres: (artist.genres ?? []).slice(0, 4) };
     } catch {
       /* genres stay empty */
@@ -585,9 +691,14 @@ async function handleImage(url, res) {
     return sendJson(res, 403, { error: 'host_not_allowed' });
   }
 
-  const upstream = await fetchWithTimeout(parsed, {
-    headers: { 'User-Agent': 'Posterfy/1.0 (+https://posterfy.app)' },
-  });
+  // A single hop with nothing to fall back to afterward, so it gets its own
+  // larger, independent timeout rather than the multi-hop chains' budget —
+  // see IMAGE_TIMEOUT_MS.
+  const upstream = await fetchWithTimeout(
+    parsed,
+    { headers: { 'User-Agent': 'Posterfy/1.0 (+https://posterfy.app)' } },
+    IMAGE_TIMEOUT_MS,
+  );
   if (!upstream.ok || !upstream.body) {
     return sendJson(res, 502, { error: 'upstream_failed', status: upstream.status });
   }

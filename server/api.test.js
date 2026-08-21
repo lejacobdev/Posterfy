@@ -205,6 +205,41 @@ describe('image proxy', () => {
       expect([400, 403], `${host} was not refused`).toContain(res.statusCode);
     }
   });
+
+  it('outlasts a slow Cover Art Archive redirect that a shared search budget would not', async () => {
+    // Cover Art Archive redirects to archive.org, which is occasionally slow
+    // enough to blow the 8s timeout shared with the Spotify/MusicBrainz
+    // chains. A proxied image has nothing to fall back to afterward, so it
+    // gets its own larger, independent timeout instead of that shared one.
+    const savedBudget = process.env.REQUEST_BUDGET_MS;
+    process.env.REQUEST_BUDGET_MS = '100'; // would fail almost instantly if shared
+    try {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          return new Response(new Uint8Array([1, 2, 3]), {
+            status: 200,
+            headers: { 'content-type': 'image/png' },
+          });
+        }),
+      );
+
+      const res = mockRes();
+      await handleApiRequest(
+        mockReq(
+          `/api/image?url=${encodeURIComponent('https://coverartarchive.org/release-group/x/front-250')}`,
+        ),
+        res,
+      );
+
+      expect(res.statusCode).toBe(200);
+    } finally {
+      vi.unstubAllGlobals();
+      if (savedBudget) process.env.REQUEST_BUDGET_MS = savedBudget;
+      else delete process.env.REQUEST_BUDGET_MS;
+    }
+  });
 });
 
 describe('parseEnv', () => {
@@ -778,5 +813,161 @@ describe('spotify probe', () => {
     const res = mockRes();
     await handleApiRequest(mockReq('/api/health?spotify=1'), res);
     expect(res.getHeader('cache-control')).toBe('no-store');
+  });
+});
+
+describe('upstream time budget', () => {
+  let savedId;
+  let savedSecret;
+  let savedBudget;
+
+  // Named distinctly from the module-level `json(res)` response-body parser
+  // used throughout this file — reusing that name here silently shadowed it
+  // for every assertion in this block, which is exactly what happened on the
+  // first pass: every `json(res).whatever` call built a *new* mock Response
+  // instead of parsing one, so assertions compared against `undefined`.
+  function mockJson(body, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    savedBudget = process.env.REQUEST_BUDGET_MS;
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+    if (savedBudget) process.env.REQUEST_BUDGET_MS = savedBudget;
+    else delete process.env.REQUEST_BUDGET_MS;
+  });
+
+  it('does not retry a slow 401 once too little budget remains', async () => {
+    // Reported as: the whole function occasionally got killed by the
+    // platform's own 10s ceiling. A 401 used to always earn a full second
+    // attempt regardless of how much time was left; a slow first attempt
+    // must not be compounded by a second one that has nowhere to land.
+    process.env.REQUEST_BUDGET_MS = '900';
+    let searchCalls = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) {
+          return mockJson({ access_token: 't', expires_in: 3600 });
+        }
+        searchCalls += 1;
+        await delay(700); // leaves under 600ms of the 900ms budget
+        return mockJson({ error: 'expired' }, 401);
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    expect(searchCalls).toBe(1);
+    expect(res.statusCode).toBe(503);
+    expect(json(res).error).toContain('spotify_unauthorized');
+  });
+
+  it('skips the MusicBrainz fallback once Spotify has already spent the budget', async () => {
+    process.env.REQUEST_BUDGET_MS = '900';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) {
+          return mockJson({ access_token: 't', expires_in: 3600 });
+        }
+        if (url.includes('api.spotify.com')) {
+          await delay(700); // leaves under the 800ms a fallback attempt needs
+          return mockJson({}, 500);
+        }
+        throw new Error('must not call MusicBrainz with no budget left');
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    // A clear, fast error beats a call that would only be killed anyway.
+    expect(res.statusCode).toBe(503);
+    expect(json(res).error).toContain('spotify_request_failed');
+  });
+
+  it('answers normally when the chain fits comfortably inside the budget', async () => {
+    process.env.REQUEST_BUDGET_MS = '8500';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) {
+          return mockJson({ access_token: 't', expires_in: 3600 });
+        }
+        return mockJson({ albums: { items: [{ id: 'a', name: 'Ok', artists: [], images: [] }] } });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    expect(json(res).provider).toBe('spotify');
+    expect(json(res).results).toHaveLength(1);
+  });
+
+  it('returns a partial tracklist rather than failing once budget runs out mid-pagination', async () => {
+    process.env.REQUEST_BUDGET_MS = '700';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) {
+          return mockJson({ access_token: 't', expires_in: 3600 });
+        }
+        if (url.includes('/tracks')) {
+          await delay(500); // consumes enough of the 700ms that a further
+          // page no longer fits, so the pagination loop's own budget check —
+          // not this mock — is what stops it.
+          return mockJson({
+            items: [{ name: 'Track from page two', track_number: 2 }],
+            next: 'https://api.spotify.com/v1/albums/alb1/tracks?offset=2',
+          });
+        }
+        return mockJson({
+          id: 'alb1',
+          name: 'Long Album',
+          artists: [{ name: 'Someone', id: 'artist1' }],
+          images: [],
+          tracks: {
+            items: [{ name: 'Track from page one', track_number: 1 }],
+            next: 'https://api.spotify.com/v1/albums/alb1/tracks?offset=1',
+          },
+        });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/album?id=01234567890123456789AB'), res);
+
+    expect(res.statusCode).toBe(200);
+    // Got page two (budget allowed it) but stopped before a third page that
+    // the mock's `next` link would otherwise keep offering forever.
+    expect(json(res).album.tracks.map((track) => track.title)).toEqual([
+      'Track from page one',
+      'Track from page two',
+    ]);
   });
 });
