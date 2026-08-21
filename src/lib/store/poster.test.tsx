@@ -56,6 +56,33 @@ describe('poster store', () => {
     expect(result.current.options.template).toBe(preset.options.template);
   });
 
+  it('replaces the previous preset rather than layering onto it', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    const vinyl = STYLE_PRESETS.find((item) => item.id === 'club');
+    const editorial = STYLE_PRESETS.find((item) => item.id === 'press');
+    if (!vinyl || !editorial) throw new Error('expected both presets');
+
+    act(() => result.current.applyPreset(vinyl));
+    expect(result.current.options.coverRadius).toBe(0.5);
+
+    // Editorial Press sets no coverRadius, so it must not keep Vinyl Club's.
+    act(() => result.current.applyPreset(editorial));
+    expect(result.current.options.template).toBe('editorial');
+    expect(result.current.options.coverRadius).toBe(DEFAULT_OPTIONS.coverRadius);
+    expect(result.current.options.vignette).toBe(DEFAULT_OPTIONS.vignette);
+  });
+
+  it('undoes a preset back to what was there before', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    const club = STYLE_PRESETS.find((item) => item.id === 'club');
+    if (!club) throw new Error('expected the club preset');
+
+    act(() => result.current.applyPreset(club));
+    act(() => result.current.undo());
+    expect(result.current.options.coverRadius).toBe(DEFAULT_OPTIONS.coverRadius);
+    expect(result.current.options.template).toBe(DEFAULT_OPTIONS.template);
+  });
+
   it('recomputes the total duration when tracks change', () => {
     const { result } = renderHook(() => usePoster(), { wrapper });
     act(() => result.current.setAlbum(demoAlbum()));

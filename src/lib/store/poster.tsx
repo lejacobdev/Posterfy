@@ -13,7 +13,12 @@ import {
   type ReactNode,
 } from 'react';
 import type { Album, PosterOptions, PosterSpec, Track } from '@/lib/types';
-import { createEmptyAlbum, DEFAULT_OPTIONS, type StylePreset } from '@/lib/poster/defaults';
+import {
+  applyPreset as applyPresetOptions,
+  createEmptyAlbum,
+  DEFAULT_OPTIONS,
+  type StylePreset,
+} from '@/lib/poster/defaults';
 import { readStorage, STORAGE_KEYS, writeStorage } from './storage';
 
 interface PosterState {
@@ -111,7 +116,9 @@ function reducer(state: PosterState, action: Action): PosterState {
         ...state,
         past: pushHistory(state, null),
         future: [],
-        options: { ...state.options, ...action.preset.options },
+        // Not a spread: a preset is a starting point, so it replaces the
+        // previous one's settings rather than layering over them.
+        options: applyPresetOptions(state.options, action.preset),
         lastTouched: null,
         lastTouchedAt: Date.now(),
       };

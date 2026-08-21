@@ -19,6 +19,16 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   rendered from the chosen artwork. Ends with a one-tap PNG download or a
   hand-off to the editor.
 
+### Fixed
+
+- Style presets are applied as a starting point rather than a layer. Because
+  presets are partial, picking Vinyl Club and then Editorial Press used to
+  leave Vinyl Club's rounded artwork and vignette behind — the wizard's style
+  previews visibly changed zoom and gained rounded corners as you clicked
+  through them. Applying a preset now resets every option any preset controls,
+  and the wizard's cards render each preset's own look instead of the preset
+  laid over the current poster.
+
 ### Changed
 
 - The editor moved from `/create` to `/editor`, and the header nav item is now

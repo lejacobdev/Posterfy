@@ -190,6 +190,46 @@ export function createEmptyAlbum(): Album {
   };
 }
 
+/**
+ * Every option that at least one preset sets.
+ *
+ * Presets are deliberately partial — Vinyl Club sets `coverRadius`, Editorial
+ * Press does not; Gallery White sets `margin`, Neon Duotone does not — so
+ * merging one straight onto another leaves the earlier one's exclusive keys
+ * behind. Picking Vinyl Club and then Editorial Press used to give you
+ * Editorial Press *with Vinyl Club's rounded artwork and vignette*.
+ *
+ * Derived from the presets themselves so it cannot drift when one gains a key.
+ */
+export const PRESET_KEYS = [
+  ...new Set(STYLE_PRESETS.flatMap((preset) => Object.keys(preset.options))),
+] as Array<keyof PosterOptions>;
+
+/**
+ * Applies a preset as a starting point rather than a layer: every option any
+ * preset controls goes back to its default first, so the result is that
+ * preset and nothing else.
+ *
+ * Options no preset touches — the album text, the tracklist, the format, the
+ * export settings — are left exactly as they were.
+ */
 export function applyPreset(options: PosterOptions, preset: StylePreset): PosterOptions {
-  return { ...options, ...preset.options };
+  const cleared: PosterOptions = { ...options };
+  // Object.assign, because indexing both sides with a key from a union widens
+  // the value type past what a direct assignment will accept.
+  for (const key of PRESET_KEYS) Object.assign(cleared, { [key]: DEFAULT_OPTIONS[key] });
+  return { ...cleared, ...preset.options };
+}
+
+/**
+ * A preset's canonical look, for previews that should show what the preset
+ * *is* rather than what it would do to the poster as it currently stands.
+ * `overrides` carries the few things a preview should still honour, such as
+ * the palette sampled from the artwork and the chosen format.
+ */
+export function presetPreviewOptions(
+  preset: StylePreset,
+  overrides: Partial<PosterOptions> = {},
+): PosterOptions {
+  return { ...DEFAULT_OPTIONS, ...preset.options, ...overrides };
 }

@@ -22,7 +22,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { Album, FormatId, PaletteStyle } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
 import { useI18n, usePosterLabels } from '@/i18n';
-import { STYLE_PRESETS } from '@/lib/poster/defaults';
+import { presetPreviewOptions, STYLE_PRESETS, type StylePreset } from '@/lib/poster/defaults';
 import { FORMAT_IDS, designHeight, getFormat } from '@/lib/poster/formats';
 import { defaultFilename, downloadPoster } from '@/lib/poster/export';
 import { extractPalette } from '@/lib/color/color';
@@ -100,6 +100,17 @@ export default function WizardPage() {
   const stepNumber = index + 1;
   const isLast = index === STEPS.length - 1;
   const posterRatio = useMemo(() => designHeight(options.format) / 1000, [options.format]);
+
+  /**
+   * What a style card renders: the preset's own definition, plus the two
+   * things a preview should still reflect — the palette sampled from this
+   * album, and the format if the user has already been to that step.
+   */
+  const previewOptions = useCallback(
+    (preset: StylePreset) =>
+      presetPreviewOptions(preset, { palette: options.palette, format: options.format }),
+    [options.palette, options.format],
+  );
 
   // Move focus to the step heading on every change so the flow is followable
   // with a screen reader and the keyboard, but leave the initial load alone.
@@ -281,7 +292,10 @@ export default function WizardPage() {
                   >
                     <span className="wizard-card__art">
                       <PosterCanvas
-                        spec={{ album, options: { ...options, ...preset.options } }}
+                        // Each card shows its own preset, not the preset laid
+                        // over the current poster — otherwise selecting one
+                        // repaints all six with whatever that one set.
+                        spec={{ album, options: previewOptions(preset) }}
                         maxRenderWidth={420}
                         ariaLabel={preset.name}
                       />
