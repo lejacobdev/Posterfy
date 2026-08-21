@@ -8,6 +8,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Easy/Advanced editing mode: a prominent toggle at the top of the editor
+  sidebar switches between the default, simpler tab set and the fuller one
+  that adds the Advanced (drag/resize) tab. The choice is remembered across
+  visits and defaults to Easy for new users.
+- The homepage hero headline now rotates through five different taglines
+  every few seconds instead of always showing the same line, and pauses for
+  reduced-motion.
 - Advanced editor mode: a new "Advanced" tab lets you drag any poster element
   (cover, title, artist, tracklist, palette, scan code, custom note) directly
   on the live preview to move or resize it, or dial it in with numeric
@@ -88,6 +95,19 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The template gallery only had 4 demo albums for 6 templates plus 6 style
+  presets, so several cards silently reused the same record — most visibly,
+  Split showed Classic's album and Duotone showed Editorial's, making
+  templates that are actually quite different look like duplicates. Added 8
+  more demo albums (12 total) and offset the preset section's index past the
+  template section's, so all 12 gallery cards now show a distinct record.
+- The playlist-import "make it public" mock animation was cropped on mobile:
+  its panel centers the mock beside the steps list at their own width for a
+  side-by-side row, but the mobile layout only switched to a stacked column
+  without also switching to stretch — so both items shrank to their content's
+  intrinsic width instead of the panel's full width, and the mock's
+  absolutely positioned menu (built for its real ~220px design width)
+  overflowed past its own clipped edge.
 - My Posters overflowed horizontally on mobile: a long title on `.poster-card`
   (a flex item inside the CSS grid) hit the classic `min-width: auto` trap —
   without an explicit `min-width: 0`, the card refused to shrink below its

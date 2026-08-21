@@ -53,8 +53,16 @@ export const es: Dictionary = {
   },
   home: {
     badge: 'Gratis · Sin cuenta · Funciona en tu navegador',
-    titleLead: 'Convierte cualquier álbum en un',
-    titleAccent: 'póster digno de enmarcar',
+    taglines: [
+      { lead: 'Convierte cualquier álbum en un', accent: 'póster digno de enmarcar' },
+      {
+        lead: 'Tu disco favorito merece algo mejor que una',
+        accent: 'captura de pantalla',
+      },
+      { lead: 'De un enlace de Spotify a un', accent: 'póster listo para imprimir' },
+      { lead: 'La portada del álbum, reinventada como', accent: 'arte de pared' },
+      { lead: 'Seis diseños, colores infinitos,', accent: 'un álbum' },
+    ],
     subtitle:
       'Busca un disco, elige un diseño, ajusta cada detalle y descarga un archivo listo para imprimir en segundos. No se sube nada: el póster se genera en tu dispositivo.',
     ctaCreate: 'Crear mi póster',
@@ -146,6 +154,9 @@ export const es: Dictionary = {
     tabDesign: 'Diseño',
     tabContent: 'Contenido',
     tabAdvanced: 'Avanzado',
+    modeLabel: 'Modo de edición',
+    modeEasy: 'Fácil',
+    modeAdvanced: 'Avanzado',
     tabExport: 'Exportar',
     advancedHint:
       'Arrastra cualquier elemento en la vista previa para moverlo o cambiar su tamaño, o usa los campos de abajo.',

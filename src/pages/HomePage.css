@@ -34,6 +34,10 @@
   max-width: 16ch;
 }
 
+.hero__title-line {
+  display: block;
+}
+
 .hero__subtitle {
   max-width: 52ch;
 }

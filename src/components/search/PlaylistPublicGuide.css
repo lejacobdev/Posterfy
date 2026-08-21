@@ -349,10 +349,20 @@
 @media (max-width: 480px) {
   .playlist-guide__panel {
     flex-direction: column;
+    /* The base rule centers the mock beside the steps list at their own
+       widths (right for a side-by-side row). Stacked in a column, "center"
+       instead shrinks both to their content's intrinsic width — collapsing
+       .pg-frame's 100% down to whatever its flow content measures, well
+       under its real 220px design width, and clipping the absolutely
+       positioned menu/cursor mock inside it via overflow: hidden. Stretching
+       gives both the panel's full width, so the frame gets the width its
+       absolute-positioned children were actually built for. */
+    align-items: stretch;
   }
 
   .pg-frame {
     width: 100%;
     max-width: 260px;
+    margin: 0 auto;
   }
 }

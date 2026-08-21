@@ -53,8 +53,13 @@ export const fr: Dictionary = {
   },
   home: {
     badge: 'Gratuit · Sans compte · Fonctionne dans le navigateur',
-    titleLead: 'Transformez n’importe quel album en',
-    titleAccent: 'affiche à encadrer',
+    taglines: [
+      { lead: 'Transformez n’importe quel album en', accent: 'affiche à encadrer' },
+      { lead: 'Votre disque préféré mérite mieux qu’une', accent: 'capture d’écran' },
+      { lead: 'D’un lien Spotify à une', accent: 'affiche prête à imprimer' },
+      { lead: 'La pochette d’album, réinventée en', accent: 'décoration murale' },
+      { lead: 'Six mises en page, des couleurs infinies,', accent: 'un seul album' },
+    ],
     subtitle:
       'Cherchez un disque, choisissez une mise en page, réglez chaque détail et téléchargez un fichier prêt à imprimer en quelques secondes. Rien n’est envoyé : tout est généré sur votre appareil.',
     ctaCreate: 'Créer mon affiche',
@@ -146,6 +151,9 @@ export const fr: Dictionary = {
     tabDesign: 'Design',
     tabContent: 'Contenu',
     tabAdvanced: 'Avancé',
+    modeLabel: 'Mode d’édition',
+    modeEasy: 'Simple',
+    modeAdvanced: 'Avancé',
     tabExport: 'Export',
     advancedHint:
       'Faites glisser un élément dans l’aperçu pour le déplacer ou le redimensionner, ou utilisez les champs ci-dessous.',

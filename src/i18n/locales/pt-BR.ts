@@ -53,8 +53,13 @@ export const ptBR: Dictionary = {
   },
   home: {
     badge: 'Grátis · Sem conta · Roda no seu navegador',
-    titleLead: 'Transforme qualquer álbum em um',
-    titleAccent: 'pôster que merece moldura',
+    taglines: [
+      { lead: 'Transforme qualquer álbum em um', accent: 'pôster que merece moldura' },
+      { lead: 'Seu disco favorito merece mais do que uma', accent: 'captura de tela' },
+      { lead: 'De um link do Spotify a um', accent: 'pôster pronto para imprimir' },
+      { lead: 'A capa do álbum, reinventada como', accent: 'arte de parede' },
+      { lead: 'Seis layouts, cores infinitas,', accent: 'um álbum' },
+    ],
     subtitle:
       'Busque um disco, escolha um layout, ajuste cada detalhe e baixe um arquivo pronto para impressão em segundos. Nada é enviado: o pôster é gerado no seu aparelho.',
     ctaCreate: 'Criar meu pôster',
@@ -146,6 +151,9 @@ export const ptBR: Dictionary = {
     tabDesign: 'Design',
     tabContent: 'Conteúdo',
     tabAdvanced: 'Avançado',
+    modeLabel: 'Modo de edição',
+    modeEasy: 'Fácil',
+    modeAdvanced: 'Avançado',
     tabExport: 'Exportar',
     advancedHint:
       'Arraste qualquer elemento na pré-visualização para mover ou redimensionar, ou use os campos abaixo.',

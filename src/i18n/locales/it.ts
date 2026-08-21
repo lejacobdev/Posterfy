@@ -53,8 +53,13 @@ export const it: Dictionary = {
   },
   home: {
     badge: 'Gratis · Senza account · Funziona nel browser',
-    titleLead: 'Trasforma qualsiasi album in un',
-    titleAccent: 'poster da incorniciare',
+    taglines: [
+      { lead: 'Trasforma qualsiasi album in un', accent: 'poster da incorniciare' },
+      { lead: 'Il tuo disco preferito merita più di uno', accent: 'screenshot' },
+      { lead: 'Da un link Spotify a un', accent: 'poster pronto da stampare' },
+      { lead: 'La copertina dell’album, reinventata come', accent: 'arte da parete' },
+      { lead: 'Sei layout, colori infiniti,', accent: 'un solo album' },
+    ],
     subtitle:
       'Cerca un disco, scegli un layout, regola ogni dettaglio e scarica un file pronto per la stampa in pochi secondi. Niente viene caricato: il poster nasce sul tuo dispositivo.',
     ctaCreate: 'Crea il tuo poster',
@@ -146,6 +151,9 @@ export const it: Dictionary = {
     tabDesign: 'Design',
     tabContent: 'Contenuto',
     tabAdvanced: 'Avanzate',
+    modeLabel: 'Modalità di modifica',
+    modeEasy: 'Semplice',
+    modeAdvanced: 'Avanzata',
     tabExport: 'Export',
     advancedHint:
       'Trascina un elemento nell’anteprima per spostarlo o ridimensionarlo, oppure usa i campi qui sotto.',

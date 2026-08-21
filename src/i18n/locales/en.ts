@@ -56,8 +56,13 @@ export const en = {
   },
   home: {
     badge: 'Free · No account · Runs in your browser',
-    titleLead: 'Turn any album into a',
-    titleAccent: 'poster worth framing',
+    taglines: [
+      { lead: 'Turn any album into a', accent: 'poster worth framing' },
+      { lead: 'Your favourite record deserves better than a', accent: 'screenshot' },
+      { lead: 'From a Spotify link to a', accent: 'print-ready poster' },
+      { lead: 'Cover art, reimagined as', accent: 'wall art' },
+      { lead: 'Six layouts, endless colours,', accent: 'one album' },
+    ],
     subtitle:
       'Search a record, pick a layout, tune every detail and download a print-ready file in seconds. Nothing is uploaded — the whole poster is rendered on your device.',
     ctaCreate: 'Create your poster',
@@ -149,6 +154,9 @@ export const en = {
     tabDesign: 'Design',
     tabContent: 'Content',
     tabAdvanced: 'Advanced',
+    modeLabel: 'Editing mode',
+    modeEasy: 'Easy',
+    modeAdvanced: 'Advanced',
     tabExport: 'Export',
     showPreview: 'Preview',
     hidePreview: 'Controls',

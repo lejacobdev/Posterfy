@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { Link, useNavigate } from 'react-router-dom';
 import type { Album, ElementId, LayoutBox } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
+import { useSettings, type EditorMode } from '@/lib/store/settings';
 import { listRecent, type RecentPoster } from '@/lib/store/recent';
 import { designHeight } from '@/lib/poster/formats';
 import { useI18n } from '@/i18n';
@@ -18,6 +19,7 @@ import { thumbnailUrl } from '@/lib/poster/cover';
 import { cn } from '@/lib/utils/misc';
 import { Seo } from '@/components/ui/Seo';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { SegmentedControl } from '@/components/ui/Controls';
 import { PosterCanvas } from '@/components/poster/PosterCanvas';
 import { AlbumSearch } from '@/components/search/AlbumSearch';
 import { DesignPanel } from '@/components/editor/DesignPanel';
@@ -54,6 +56,7 @@ export default function EditorPage() {
     redo,
     reset,
   } = usePoster();
+  const { editorMode, setEditorMode } = useSettings();
   const [tab, setTab] = useState<TabId>('design');
   const [layout, setLayout] = useState<Map<ElementId, LayoutBox>>(new Map());
   const [selectedElement, setSelectedElement] = useState<ElementId | null>(null);
@@ -61,6 +64,18 @@ export default function EditorPage() {
     () => designHeight(spec.options.format) / 1000,
     [spec.options.format],
   );
+
+  // Easy mode hides the Advanced tab entirely rather than merely disabling
+  // it — a first-time user should never wonder what it does. Switching back
+  // to Easy while it's open falls back to Design, the next most central tab.
+  const visibleTabs = useMemo(
+    () => TABS.filter((item) => item.id !== 'advanced' || editorMode === 'advanced'),
+    [editorMode],
+  );
+
+  useEffect(() => {
+    if (editorMode === 'easy' && tab === 'advanced') setTab('design');
+  }, [editorMode, tab]);
 
   // Keyboard shortcuts for undo/redo, the way a design tool should behave.
   useEffect(() => {
@@ -168,8 +183,20 @@ export default function EditorPage() {
             </section>
 
             <aside className="editor__sidebar glass" aria-label={t('editor.title')}>
+              <div className="editor__mode-toggle">
+                <SegmentedControl<EditorMode>
+                  label={t('editor.modeLabel')}
+                  value={editorMode}
+                  options={[
+                    { value: 'easy', label: t('editor.modeEasy'), icon: 'wand' },
+                    { value: 'advanced', label: t('editor.modeAdvanced'), icon: 'sliders' },
+                  ]}
+                  onChange={setEditorMode}
+                />
+              </div>
+
               <div className="editor__tabs" role="tablist">
-                {TABS.map((item) => (
+                {visibleTabs.map((item) => (
                   <button
                     key={item.id}
                     type="button"

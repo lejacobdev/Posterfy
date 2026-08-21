@@ -53,8 +53,13 @@ export const de: Dictionary = {
   },
   home: {
     badge: 'Kostenlos · Ohne Konto · Läuft im Browser',
-    titleLead: 'Mach aus jedem Album ein',
-    titleAccent: 'Poster für die Wand',
+    taglines: [
+      { lead: 'Mach aus jedem Album ein', accent: 'Poster für die Wand' },
+      { lead: 'Deine Lieblingsplatte verdient mehr als einen', accent: 'Screenshot' },
+      { lead: 'Von einem Spotify-Link zum', accent: 'druckfertigen Poster' },
+      { lead: 'Albumcover, neu gedacht als', accent: 'Wandkunst' },
+      { lead: 'Sechs Layouts, endlose Farben,', accent: 'ein Album' },
+    ],
     subtitle:
       'Album suchen, Layout wählen, jedes Detail feinjustieren und in Sekunden eine druckfertige Datei laden. Nichts wird hochgeladen – das Poster entsteht komplett auf deinem Gerät.',
     ctaCreate: 'Poster erstellen',
@@ -146,6 +151,9 @@ export const de: Dictionary = {
     tabDesign: 'Design',
     tabContent: 'Inhalt',
     tabAdvanced: 'Erweitert',
+    modeLabel: 'Bearbeitungsmodus',
+    modeEasy: 'Einfach',
+    modeAdvanced: 'Erweitert',
     tabExport: 'Export',
     advancedHint:
       'Ziehe ein Element in der Vorschau, um es zu verschieben oder zu skalieren, oder nutze die Felder unten.',

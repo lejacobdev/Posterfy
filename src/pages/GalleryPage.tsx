@@ -38,13 +38,17 @@ export default function GalleryPage() {
       },
     }));
 
+    // Offset past every template's own index (there are as many templates as
+    // there are demo albums) so no preset card shows the same demo record as
+    // one of the template cards above it — with only `index + 1`, the two
+    // sections used to overlap and repeat most of the same albums.
     const presets: GalleryEntry[] = STYLE_PRESETS.map((preset, index) => ({
       id: `preset-${preset.id}`,
       name: preset.name,
       description: preset.description,
       template: (preset.options.template ?? 'classic') as TemplateId,
       spec: {
-        album: demoAlbum(index + 1),
+        album: demoAlbum(index + TEMPLATE_META.length),
         options: { ...DEFAULT_OPTIONS, ...preset.options, palette: [] },
       },
     }));

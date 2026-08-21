@@ -18,6 +18,13 @@ import { readStorage, removeStorage, STORAGE_KEYS, writeStorage } from './storag
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 
+/**
+ * Easy hides the Advanced tab (per-element drag/resize) so a first-time user
+ * isn't confronted with it; Advanced adds it back. Everything else in the
+ * editor — album, design, content, export — is available in both.
+ */
+export type EditorMode = 'easy' | 'advanced';
+
 export interface SpotifyCredentials {
   clientId: string;
   clientSecret: string;
@@ -29,6 +36,7 @@ export interface Settings {
   /** Set once the user picks a language by hand; stops auto-detection. */
   localePinned: boolean;
   reduceMotion: boolean;
+  editorMode: EditorMode;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -36,6 +44,7 @@ const DEFAULT_SETTINGS: Settings = {
   locale: 'en',
   localePinned: false,
   reduceMotion: false,
+  editorMode: 'easy',
 };
 
 interface SettingsContextValue extends Settings {
@@ -44,6 +53,7 @@ interface SettingsContextValue extends Settings {
   setTheme: (theme: ThemePreference) => void;
   setLocale: (locale: Locale) => void;
   setReduceMotion: (value: boolean) => void;
+  setEditorMode: (mode: EditorMode) => void;
   credentials: SpotifyCredentials | null;
   saveCredentials: (credentials: SpotifyCredentials) => void;
   clearCredentials: () => void;
@@ -60,6 +70,7 @@ function loadSettings(): Settings {
     locale: detectLocale(stored.localePinned ? stored.locale : null),
     localePinned: stored.localePinned ?? false,
     reduceMotion: stored.reduceMotion ?? DEFAULT_SETTINGS.reduceMotion,
+    editorMode: stored.editorMode ?? DEFAULT_SETTINGS.editorMode,
   };
 }
 
@@ -110,6 +121,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((current) => ({ ...current, reduceMotion }));
   }, []);
 
+  const setEditorMode = useCallback((editorMode: EditorMode) => {
+    setSettings((current) => ({ ...current, editorMode }));
+  }, []);
+
   const saveCredentials = useCallback((next: SpotifyCredentials) => {
     setCredentials(next);
     writeStorage(STORAGE_KEYS.credentials, next);
@@ -134,6 +149,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setTheme,
       setLocale,
       setReduceMotion,
+      setEditorMode,
       credentials,
       saveCredentials,
       clearCredentials,
@@ -145,6 +161,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setTheme,
       setLocale,
       setReduceMotion,
+      setEditorMode,
       credentials,
       saveCredentials,
       clearCredentials,
