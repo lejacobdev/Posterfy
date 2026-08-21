@@ -11,7 +11,9 @@ import { ApiError, isAbortError, type RequestOptions } from './client';
 import {
   getProviderConfig,
   getSpotifyAlbum,
+  getSpotifyPlaylist,
   parseSpotifyAlbumId,
+  searchSpotifyPlaylists,
   searchViaServer,
 } from './spotify';
 import { getMusicBrainzAlbum, searchMusicBrainzAlbums } from './musicbrainz';
@@ -90,10 +92,30 @@ export async function searchAlbums(
   return { items, provider: 'musicbrainz', degraded: true };
 }
 
+/**
+ * Searches for playlists. Spotify-only — there is no keyless fallback the
+ * way album search has MusicBrainz, so this needs a server (or stored
+ * credentials are not enough on their own; playlist search always goes
+ * through the server proxy).
+ */
+export async function searchPlaylists(
+  query: string,
+  options: SearchOptions = {},
+): Promise<SearchResult> {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) return { items: [], provider: 'spotify', degraded: false };
+  const { items, provider } = await searchSpotifyPlaylists(trimmed, options);
+  return { items, provider, degraded: false };
+}
+
 export async function getAlbum(
-  summary: Pick<AlbumSummary, 'id' | 'source'>,
+  summary: Pick<AlbumSummary, 'id' | 'source' | 'kind'>,
   options: RequestOptions & { market?: string } = {},
 ): Promise<Album> {
+  // A playlist is Spotify-only and fetched through its own endpoint; nothing
+  // else in this function's fallback chain applies to it.
+  if (summary.kind === 'playlist') return getSpotifyPlaylist(summary.id, options);
+
   const config = await getProviderConfig();
 
   // The API resolves both providers, so hand it the source and let it route.

@@ -1047,6 +1047,212 @@ describe('track search', () => {
   });
 });
 
+describe('playlist support', () => {
+  let savedId;
+  let savedSecret;
+
+  const TOKEN = { access_token: 'test-token', expires_in: 3600 };
+
+  function json(body, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  describe('playlist search', () => {
+    it('reports missing configuration — there is no fallback provider for playlists', async () => {
+      delete process.env.SPOTIFY_CLIENT_ID;
+      delete process.env.SPOTIFY_CLIENT_SECRET;
+
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/search?q=chill&type=playlist'), res);
+      expect(res.statusCode).toBe(501);
+      expect(json2(res).error).toBe('spotify_not_configured');
+    });
+
+    it('normalises playlist results into the same shape an album result takes', async () => {
+      process.env.SPOTIFY_CLIENT_ID = 'id';
+      process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input) => {
+          const url = String(input);
+          if (url.includes('accounts.spotify.com')) return json(TOKEN);
+          return json({
+            playlists: {
+              items: [
+                {
+                  id: 'pl1',
+                  name: "Today's Top Hits",
+                  owner: { display_name: 'Spotify' },
+                  tracks: { total: 50 },
+                  images: [
+                    { url: 'https://i.scdn.co/image/big', width: 640 },
+                    { url: 'https://i.scdn.co/image/tiny', width: 64 },
+                  ],
+                },
+              ],
+            },
+          });
+        }),
+      );
+
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/search?q=today&type=playlist'), res);
+
+      expect(res.statusCode).toBe(200);
+      const body = json2(res);
+      expect(body.provider).toBe('spotify');
+      expect(body.results).toEqual([
+        expect.objectContaining({
+          id: 'pl1',
+          source: 'spotify',
+          kind: 'playlist',
+          title: "Today's Top Hits",
+          artist: 'Spotify',
+          totalTracks: 50,
+          coverUrl: 'https://i.scdn.co/image/tiny',
+        }),
+      ]);
+    });
+
+    it('drops a null entry Spotify sometimes returns in the items array', async () => {
+      process.env.SPOTIFY_CLIENT_ID = 'id';
+      process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input) => {
+          const url = String(input);
+          if (url.includes('accounts.spotify.com')) return json(TOKEN);
+          return json({ playlists: { items: [null] } });
+        }),
+      );
+
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/search?q=today&type=playlist'), res);
+      expect(json2(res).results).toEqual([]);
+    });
+  });
+
+  describe('playlist fetch', () => {
+    const PLAYLIST = {
+      id: 'pl1',
+      name: 'Road Trip',
+      owner: { display_name: '  Jamie  ' },
+      images: [{ url: 'https://i.scdn.co/image/med', width: 300 }],
+      uri: 'spotify:playlist:pl1',
+      external_urls: { spotify: 'https://open.spotify.com/playlist/pl1' },
+      tracks: {
+        items: [
+          { track: { name: 'First Song', duration_ms: 200000, artists: [{ name: 'Artist A' }] } },
+          // A removed or local track Spotify cannot resolve has no name.
+          { track: { name: null } },
+        ],
+      },
+    };
+
+    it('rejects a malformed playlist id before calling out', async () => {
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/playlist?id=../../etc/passwd'), res);
+      expect(res.statusCode).toBe(400);
+      expect(json2(res).error).toBe('invalid_id');
+    });
+
+    it('reports missing configuration', async () => {
+      delete process.env.SPOTIFY_CLIENT_ID;
+      delete process.env.SPOTIFY_CLIENT_SECRET;
+
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/playlist?id=37i9dQZF1DXcBWIGoYBM5M'), res);
+      expect(res.statusCode).toBe(501);
+      expect(json2(res).error).toBe('spotify_not_configured');
+    });
+
+    it('normalises a playlist into the same wire shape as /api/album', async () => {
+      process.env.SPOTIFY_CLIENT_ID = 'id';
+      process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input) => {
+          const url = String(input);
+          if (url.includes('accounts.spotify.com')) return json(TOKEN);
+          return json(PLAYLIST);
+        }),
+      );
+
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/playlist?id=37i9dQZF1DXcBWIGoYBM5M'), res);
+
+      expect(res.statusCode).toBe(200);
+      const album = json2(res).album;
+      expect(album.kind).toBe('playlist');
+      expect(album.source).toBe('spotify');
+      expect(album.title).toBe('Road Trip');
+      // Owner name is trimmed — the raw value has stray whitespace.
+      expect(album.artist).toBe('Jamie');
+      expect(album.releaseDate).toBe('');
+      expect(album.genres).toEqual([]);
+      expect(album.label).toBeNull();
+      // The unresolvable second item is dropped, not turned into a blank track.
+      expect(album.tracks).toHaveLength(1);
+      expect(album.tracks[0]).toMatchObject({
+        position: 1,
+        title: 'First Song',
+        durationMs: 200000,
+        artist: 'Artist A',
+      });
+      expect(album.totalDurationMs).toBe(200000);
+      expect(album.uri).toBe('spotify:playlist:pl1');
+      expect(album.externalUrl).toBe('https://open.spotify.com/playlist/pl1');
+    });
+
+    it('paginates a large playlist across multiple track pages', async () => {
+      process.env.SPOTIFY_CLIENT_ID = 'id';
+      process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async (input) => {
+          const url = String(input);
+          if (url.includes('accounts.spotify.com')) return json(TOKEN);
+          if (url.includes('/tracks')) {
+            return json({
+              items: [{ track: { name: 'Track Two', duration_ms: 100000, artists: [] } }],
+              next: null,
+            });
+          }
+          return json({
+            ...PLAYLIST,
+            tracks: {
+              items: [{ track: { name: 'Track One', duration_ms: 90000, artists: [] } }],
+              next: 'https://api.spotify.com/v1/playlists/pl1/tracks?offset=1',
+            },
+          });
+        }),
+      );
+
+      const res = mockRes();
+      await handleApiRequest(mockReq('/api/playlist?id=37i9dQZF1DXcBWIGoYBM5M'), res);
+
+      const album = json2(res).album;
+      expect(album.tracks.map((track) => track.title)).toEqual(['Track One', 'Track Two']);
+    });
+  });
+});
+
 describe('spotify probe', () => {
   let savedId;
   let savedSecret;

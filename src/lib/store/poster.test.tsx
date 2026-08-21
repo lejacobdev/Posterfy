@@ -152,4 +152,51 @@ describe('poster store', () => {
     expect(result.current.album.coverUrl).toBe('data:image/png;base64,abc');
     expect(result.current.album.coverUrlHiRes).toBe('data:image/png;base64,abc');
   });
+
+  it('gives each manual draft its own id, distinct from the shared placeholder', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.startDraft());
+    expect(result.current.album.id).not.toBe('draft');
+  });
+
+  it('does not reassign the id on a second startDraft once one is already underway', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.startDraft());
+    const firstId = result.current.album.id;
+    act(() => result.current.startDraft());
+    expect(result.current.album.id).toBe(firstId);
+  });
+
+  it('loads a saved poster, replacing the current one outright', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setAlbum(demoAlbum()));
+    act(() => result.current.setOption('template', 'vinyl'));
+
+    const saved = {
+      album: { ...createEmptyAlbum(), id: 'other', title: 'Other Album', artist: 'Other Artist' },
+      options: { ...DEFAULT_OPTIONS, template: 'minimal' as const },
+    };
+    act(() => result.current.load(saved));
+
+    expect(result.current.album).toEqual(saved.album);
+    expect(result.current.options.template).toBe('minimal');
+    expect(result.current.hasAlbum).toBe(true);
+  });
+
+  it("clears the previous poster's undo history on load", () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setAlbum(demoAlbum()));
+    act(() => result.current.setOption('template', 'vinyl'));
+    expect(result.current.canUndo).toBe(true);
+
+    act(() =>
+      result.current.load({
+        album: { ...createEmptyAlbum(), id: 'other' },
+        options: DEFAULT_OPTIONS,
+      }),
+    );
+
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.canRedo).toBe(false);
+  });
 });

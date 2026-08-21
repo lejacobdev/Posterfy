@@ -347,6 +347,27 @@ function normalizeSearchResults(payload) {
   return results;
 }
 
+/**
+ * Playlist search results, normalised into the same shape an album search
+ * result takes so the client's ranking, caching and result-row rendering
+ * need no playlist-specific branches. `kind: 'playlist'` is the one thing
+ * that tells `getAlbum` (client-side) to fetch `/api/playlist` instead of
+ * `/api/album` once one of these is chosen.
+ */
+function normalizePlaylistResults(payload) {
+  const items = (payload?.playlists?.items ?? []).filter(Boolean);
+  return items.map((playlist) => ({
+    id: playlist.id,
+    source: 'spotify',
+    kind: 'playlist',
+    title: playlist.name ?? '',
+    artist: playlist.owner?.display_name ?? '',
+    releaseDate: '',
+    coverUrl: pickImage(playlist.images, 'small'),
+    totalTracks: playlist.tracks?.total ?? 0,
+  }));
+}
+
 async function fetchAllTracks(albumId, firstPage, deadline) {
   const tracks = [...(firstPage?.items ?? [])];
   let next = firstPage?.next;
@@ -393,6 +414,71 @@ function normalizeAlbum(album, tracks) {
     totalDurationMs: normalizedTracks.reduce((sum, track) => sum + track.durationMs, 0),
     uri: album.uri ?? null,
     externalUrl: album.external_urls?.spotify ?? null,
+  };
+}
+
+/**
+ * A playlist's tracks page 100 at a time (vs. an album's 50), and each item
+ * wraps the actual track under `.track` alongside who added it and when —
+ * neither of which the poster needs.
+ */
+async function fetchAllPlaylistTracks(playlistId, firstPage, deadline) {
+  const items = [...(firstPage?.items ?? [])];
+  let next = firstPage?.next;
+  let guard = 0;
+  // A large playlist could need many pages; once the budget is gone,
+  // returning what has been fetched so far beats throwing away the list.
+  while (next && guard < 20 && hasBudget(deadline)) {
+    guard += 1;
+    const page = await spotifyRequest(
+      `/playlists/${playlistId}/tracks`,
+      { limit: 100, offset: items.length },
+      deadline,
+    );
+    items.push(...(page.items ?? []));
+    next = page.next;
+  }
+  return items;
+}
+
+/**
+ * Normalises a Spotify playlist into the exact same shape `normalizeAlbum`
+ * produces, `kind: 'playlist'` aside — so it flows through the poster
+ * renderer, undo/redo, persistence and export unchanged. A playlist mixes
+ * artists, so each track carries its own `artist`; the playlist has no
+ * release date or record label, so those stay empty (the meta column
+ * already omits an empty entry) and its curator becomes the poster's
+ * "artist" line instead.
+ */
+function normalizePlaylist(playlist, items) {
+  const tracks = items
+    .map((item) => item?.track)
+    // A removed track or a local file Spotify cannot resolve has no name.
+    .filter((track) => track?.name)
+    .map((track, index) => ({
+      position: index + 1,
+      title: track.name ?? '',
+      durationMs: track.duration_ms ?? 0,
+      discNumber: 1,
+      explicit: Boolean(track.explicit),
+      artist: (track.artists ?? []).map((artist) => artist.name).join(', '),
+    }));
+
+  return {
+    id: playlist.id,
+    source: 'spotify',
+    kind: 'playlist',
+    title: playlist.name ?? '',
+    artist: playlist.owner?.display_name?.trim() || '',
+    releaseDate: '',
+    coverUrl: pickImage(playlist.images, 'medium'),
+    coverUrlHiRes: pickImage(playlist.images, 'large'),
+    tracks,
+    genres: [],
+    label: null,
+    totalDurationMs: tracks.reduce((sum, track) => sum + track.durationMs, 0),
+    uri: playlist.uri ?? null,
+    externalUrl: playlist.external_urls?.spotify ?? null,
   };
 }
 
@@ -742,6 +828,27 @@ async function handleSearch(url, res) {
 
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 12)));
   const market = url.searchParams.get('market') ?? undefined;
+
+  // Playlists are a Spotify-only concept — MusicBrainz has nothing to fall
+  // back to, so a failure here is reported rather than silently degraded to
+  // another provider the way an album search can be.
+  if (url.searchParams.get('type') === 'playlist') {
+    if (!hasSpotifyCredentials()) {
+      return sendJson(res, 501, { error: 'spotify_not_configured' });
+    }
+    const payload = await spotifyRequest(
+      '/search',
+      { q: query, type: 'playlist', limit: Math.min(limit, spotifySearchLimit()), market },
+      newDeadline(),
+    );
+    return sendJson(
+      res,
+      200,
+      { results: normalizePlaylistResults(payload), provider: 'spotify' },
+      300,
+    );
+  }
+
   let degradedReason = null;
   let degradedDetail = null;
   // Shared by every upstream call this request makes, Spotify and MusicBrainz
@@ -871,6 +978,29 @@ async function handleAlbum(url, res) {
     }
   }
 
+  return sendJson(res, 200, { album: normalized }, 3600);
+}
+
+/**
+ * Fetches a Spotify playlist and returns it wrapped exactly like `/api/album`
+ * does — same `{ album }` key, same shape — so the client's existing album
+ * response parsing needs no playlist-specific branch at all.
+ */
+async function handlePlaylist(url, res) {
+  const id = (url.searchParams.get('id') ?? '').trim();
+  if (!SPOTIFY_ID_RE.test(id)) return sendJson(res, 400, { error: 'invalid_id' });
+  if (!hasSpotifyCredentials()) {
+    return sendJson(res, 501, { error: 'spotify_not_configured' });
+  }
+
+  const deadline = newDeadline();
+  const playlist = await spotifyRequest(
+    `/playlists/${id}`,
+    { market: url.searchParams.get('market') ?? undefined },
+    deadline,
+  );
+  const items = await fetchAllPlaylistTracks(id, playlist.tracks, deadline);
+  const normalized = normalizePlaylist(playlist, items);
   return sendJson(res, 200, { album: normalized }, 3600);
 }
 
@@ -1006,6 +1136,10 @@ export async function handleApiRequest(req, res) {
 
       case '/api/album':
         await handleAlbum(url, res);
+        return true;
+
+      case '/api/playlist':
+        await handlePlaylist(url, res);
         return true;
 
       case '/api/image':

@@ -4,6 +4,15 @@
 
 export type ProviderId = 'spotify' | 'musicbrainz' | 'manual';
 
+/**
+ * What kind of thing this is standing in for `Album`'s shape. Absent means
+ * 'album' — every pre-existing `Album`/`AlbumSummary` in the wild, and every
+ * one an album provider produces, simply never sets this field. Only a
+ * Spotify playlist, normalised into the same shape so the rest of the poster
+ * pipeline needs no changes to draw one, sets it to `'playlist'`.
+ */
+export type SubjectKind = 'album' | 'playlist';
+
 export interface Track {
   /** 1-based position inside the album. */
   position: number;
@@ -11,11 +20,14 @@ export interface Track {
   durationMs: number;
   discNumber?: number;
   explicit?: boolean;
+  /** A playlist track's own artist, which can differ from `Album.artist`. */
+  artist?: string;
 }
 
 export interface Album {
   id: string;
   source: ProviderId;
+  kind?: SubjectKind;
   title: string;
   artist: string;
   /** ISO-ish date as returned by the provider: `YYYY`, `YYYY-MM` or `YYYY-MM-DD`. */
@@ -35,6 +47,7 @@ export interface Album {
 export interface AlbumSummary {
   id: string;
   source: ProviderId;
+  kind?: SubjectKind;
   title: string;
   artist: string;
   releaseDate: string;

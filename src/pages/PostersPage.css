@@ -1,0 +1,112 @@
+.posters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-3);
+  padding-bottom: var(--space-6);
+}
+
+.poster-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform var(--duration-base) var(--ease-spring),
+    border-color var(--duration-base) var(--ease-out);
+}
+
+.poster-card:hover,
+.poster-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+}
+
+.poster-card__art {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-strong);
+  color: var(--text-subtle);
+}
+
+.poster-card__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.poster-card__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.poster-card__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poster-card__meta,
+.poster-card__time {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poster-card__remove {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--text-subtle);
+}
+
+.poster-card__remove:hover {
+  background: var(--surface-hover);
+  color: var(--danger);
+}
+
+.posters-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.posters-empty__title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.posters-empty__hint {
+  font-size: var(--text-sm);
+  max-width: 42ch;
+}
+
+@media (max-width: 719px) {
+  .posters-grid {
+    grid-template-columns: 1fr;
+  }
+}

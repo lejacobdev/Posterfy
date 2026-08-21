@@ -57,13 +57,20 @@ export function labelFont(rc: RenderContext, size: number): FontSpec {
 
 export function posterTitle(rc: RenderContext): string {
   const { album, options } = rc.spec;
-  const raw = options.titleOverride.trim() || album.title || 'Untitled album';
+  const fallback = album.kind === 'playlist' ? 'Untitled playlist' : 'Untitled album';
+  const raw = options.titleOverride.trim() || album.title || fallback;
   return options.uppercaseTitle ? raw.toUpperCase() : raw;
 }
 
 export function posterArtist(rc: RenderContext): string {
   const { album, options } = rc.spec;
-  const raw = options.artistOverride.trim() || album.artist || 'Unknown artist';
+  // A playlist's "artist" is its curator; when that is unknown, naming the
+  // track count reads better than a made-up handle.
+  const fallback =
+    album.kind === 'playlist' && album.tracks.length > 0
+      ? `${album.tracks.length} tracks`
+      : 'Unknown artist';
+  const raw = options.artistOverride.trim() || album.artist || fallback;
   return options.uppercaseTitle ? raw.toUpperCase() : raw;
 }
 
@@ -282,7 +289,10 @@ export function drawTracklist(rc: RenderContext, options: TracklistOptions): Tra
 
   const label = (track: Track) => {
     const number = spec.options.showTrackNumbers ? `${track.position}. ` : '';
-    return `${number}${track.title}`;
+    // Only a playlist track carries its own artist — an album's tracks never
+    // set it, since every one of them is already the poster's own artist.
+    const artist = track.artist ? ` — ${track.artist}` : '';
+    return `${number}${track.title}${artist}`;
   };
 
   // Pick the largest size where every row fits vertically and horizontally.

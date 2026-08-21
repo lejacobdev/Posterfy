@@ -6,16 +6,18 @@
  */
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import type { Album, AlbumSummary, ProviderId } from '@/lib/types';
+import type { Album, AlbumSummary, ProviderId, SubjectKind } from '@/lib/types';
 import {
   getAlbum,
   getAlbumFromLink,
   looksLikeAlbumLink,
   prefetchProviders,
   searchAlbums,
+  searchPlaylists,
 } from '@/lib/api/provider';
+import { getProviderConfig } from '@/lib/api/spotify';
 import { rankAlbums } from '@/lib/search/fuzzy';
-import { searchCache } from '@/lib/search/cache';
+import { searchCache, SearchCache } from '@/lib/search/cache';
 import { thumbnailUrl } from '@/lib/poster/cover';
 import { isAbortError } from '@/lib/api/client';
 import { detectMarket } from '@/i18n/detect';
@@ -24,6 +26,7 @@ import { useOnlineStatus } from '@/hooks/useMediaQuery';
 import { releaseYear } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/misc';
 import { Icon } from '@/components/ui/Icon';
+import { SegmentedControl } from '@/components/ui/Controls';
 import './AlbumSearch.css';
 
 export interface AlbumSearchProps {
@@ -32,6 +35,13 @@ export interface AlbumSearchProps {
   autoFocus?: boolean;
   placeholder?: string;
 }
+
+/**
+ * Kept separate from the album cache so a query typed in one mode never
+ * answers the other from memory — "dire" searched as an album and as a
+ * playlist are two entirely different result sets.
+ */
+const playlistSearchCache = new SearchCache();
 
 /**
  * Short enough to feel live, long enough that an average typing burst is one
@@ -56,6 +66,10 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  // Playlists are Spotify-only, so the toggle to search them only appears
+  // once we know Spotify is actually configured on this deployment.
+  const [spotifyAvailable, setSpotifyAvailable] = useState(false);
+  const [subjectKind, setSubjectKind] = useState<SubjectKind>('album');
 
   const abortRef = useRef<AbortController | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -85,12 +99,22 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
   // than config-then-search.
   useEffect(() => {
     prefetchProviders();
+    void getProviderConfig().then((config) => setSpotifyAvailable(config.spotify));
   }, []);
+
+  // Falling back to album search if Spotify drops out from under a playlist
+  // search in progress — there is no keyless playlist provider to degrade to.
+  useEffect(() => {
+    if (!spotifyAvailable && subjectKind === 'playlist') setSubjectKind('album');
+  }, [spotifyAvailable, subjectKind]);
 
   useEffect(() => {
     const trimmed = query.trim();
+    const isPlaylistMode = subjectKind === 'playlist';
+    const cache = isPlaylistMode ? playlistSearchCache : searchCache;
+    const search = isPlaylistMode ? searchPlaylists : searchAlbums;
 
-    if (trimmed.length < MIN_QUERY || isLink) {
+    if (trimmed.length < MIN_QUERY || (isLink && !isPlaylistMode)) {
       supersede();
       setResults([]);
       setResultsQuery('');
@@ -100,7 +124,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
 
     // An exact repeat — a backspace and retype, or a query from a minute ago —
     // never touches the network.
-    const cached = searchCache.get(trimmed);
+    const cached = cache.get(trimmed);
     if (cached) {
       supersede();
       setResults(rankAlbums(trimmed, cached.items, { limit: SHOWN_LIMIT }));
@@ -115,7 +139,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
     // Nothing exact, but a shorter query we already fetched usually covers this
     // one. Rank those for the new query and show them while the real response
     // is on its way, so the list moves with every keystroke.
-    const prefix = searchCache.findPrefix(trimmed);
+    const prefix = cache.findPrefix(trimmed);
     if (prefix) {
       // `strict`, because these were fetched for a different query: show them
       // only if they genuinely score against this one, never as a fallback.
@@ -137,7 +161,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
       setLoading(true);
       setError(null);
       try {
-        const response = await searchAlbums(trimmed, {
+        const response = await search(trimmed, {
           signal: controller.signal,
           // Over-fetch so the ranker has something to choose from: the record
           // the user means is often outside the provider's own top few.
@@ -146,7 +170,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
         });
         if (id !== requestId.current) return;
 
-        searchCache.set(trimmed, { items: response.items, provider: response.provider });
+        cache.set(trimmed, { items: response.items, provider: response.provider });
         setResults(rankAlbums(trimmed, response.items, { limit: SHOWN_LIMIT }));
         setResultsQuery(trimmed);
         setProvider(response.provider);
@@ -165,7 +189,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [query, isLink, online, t, supersede]);
+  }, [query, isLink, online, t, supersede, subjectKind]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -262,6 +286,17 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
 
   return (
     <div className="album-search" ref={containerRef}>
+      {spotifyAvailable && (
+        <SegmentedControl<SubjectKind>
+          label={t('editor.searchMode')}
+          value={subjectKind}
+          onChange={setSubjectKind}
+          options={[
+            { value: 'album', label: t('editor.searchModeAlbums'), icon: 'disc' },
+            { value: 'playlist', label: t('editor.searchModePlaylists'), icon: 'list' },
+          ]}
+        />
+      )}
       <div className={cn('album-search__field glass', showResults && 'is-open')}>
         <Icon name="search" size={20} className="album-search__icon" />
         <input
@@ -269,7 +304,12 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
           type="search"
           className="album-search__input"
           value={query}
-          placeholder={placeholder ?? t('editor.searchPlaceholder')}
+          placeholder={
+            placeholder ??
+            (subjectKind === 'playlist'
+              ? t('editor.searchPlaylistPlaceholder')
+              : t('editor.searchPlaceholder'))
+          }
           aria-label={t('editor.searchLabel')}
           aria-autocomplete="list"
           aria-controls={listId}
@@ -357,7 +397,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
                     loading={index < 6 ? 'eager' : 'lazy'}
                   />
                 ) : (
-                  <Icon name="disc" size={20} />
+                  <Icon name={result.kind === 'playlist' ? 'list' : 'disc'} size={20} />
                 )}
               </span>
               <span className="album-result__text">
@@ -383,8 +423,10 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
 
           {!loading && results.length === 0 && !error && query.trim().length >= MIN_QUERY && (
             <div className="album-search__empty">
-              <p>{t('editor.noResults')}</p>
-              {onManual && (
+              <p>
+                {subjectKind === 'playlist' ? t('editor.noPlaylistResults') : t('editor.noResults')}
+              </p>
+              {onManual && subjectKind === 'album' && (
                 <button type="button" className="btn btn--outline btn--sm" onClick={onManual}>
                   <Icon name="edit" size={15} />
                   {t('editor.manualMode')}

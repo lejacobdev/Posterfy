@@ -20,6 +20,7 @@ import {
   type StylePreset,
 } from '@/lib/poster/defaults';
 import { readStorage, STORAGE_KEYS, writeStorage } from './storage';
+import { hasRecentContent, upsertRecent } from './recent';
 
 interface PosterState {
   album: Album;
@@ -78,7 +79,20 @@ function totalDuration(tracks: Track[]): number {
 function reducer(state: PosterState, action: Action): PosterState {
   switch (action.type) {
     case 'startDraft':
-      return { ...state, started: true };
+      return {
+        ...state,
+        started: true,
+        // A fresh id per manual poster, so each one gets its own entry in the
+        // recent-posters list instead of every manual draft ever started
+        // colliding on the one shared placeholder id.
+        album:
+          state.album.id === 'draft'
+            ? {
+                ...state.album,
+                id: `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+              }
+            : state.album,
+      };
 
     case 'setAlbum':
       return {
@@ -183,7 +197,18 @@ function reducer(state: PosterState, action: Action): PosterState {
       };
 
     case 'hydrate':
-      return { ...state, album: action.snapshot.album, options: action.snapshot.options };
+      // Loading a saved poster replaces the session outright — its own undo
+      // history would be confusing to carry over from whatever was open
+      // before it.
+      return {
+        ...state,
+        album: action.snapshot.album,
+        options: action.snapshot.options,
+        started: true,
+        past: [],
+        future: [],
+        lastTouched: null,
+      };
 
     default:
       return state;
@@ -224,6 +249,8 @@ export interface PosterContextValue {
   undo: () => void;
   redo: () => void;
   reset: () => void;
+  /** Replaces the whole session with a previously saved poster. */
+  load: (spec: PosterSpec) => void;
 }
 
 const PosterContext = createContext<PosterContextValue | null>(null);
@@ -238,6 +265,14 @@ export function PosterProvider({ children }: { children: ReactNode }) {
       options: state.options,
       started: state.started,
     });
+    // A poster only earns a spot in "recent" once it is more than the blank
+    // starting point — otherwise clicking "start blank" alone would already
+    // create an entry before the user has typed anything into it. A manual
+    // draft's title/artist live in the option overrides, not on the album
+    // itself, so that check has to look there too.
+    if (state.started && hasRecentContent(state.album, state.options)) {
+      upsertRecent(state.album, state.options);
+    }
   }, [state.album, state.options, state.started]);
 
   const setOption = useCallback(
@@ -266,6 +301,7 @@ export function PosterProvider({ children }: { children: ReactNode }) {
       undo: () => dispatch({ type: 'undo' }),
       redo: () => dispatch({ type: 'redo' }),
       reset: () => dispatch({ type: 'reset' }),
+      load: (spec) => dispatch({ type: 'hydrate', snapshot: spec }),
     }),
     [state, setOption],
   );

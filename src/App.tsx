@@ -15,6 +15,7 @@ import HomePage from '@/pages/HomePage';
 const WizardPage = lazy(() => import('@/pages/WizardPage'));
 const EditorPage = lazy(() => import('@/pages/EditorPage'));
 const GalleryPage = lazy(() => import('@/pages/GalleryPage'));
+const PostersPage = lazy(() => import('@/pages/PostersPage'));
 const FaqPage = lazy(() => import('@/pages/FaqPage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
@@ -32,6 +33,7 @@ const router = createBrowserRouter(
         { path: 'create', element: <WizardPage /> },
         { path: 'editor', element: <EditorPage /> },
         { path: 'gallery', element: <GalleryPage /> },
+        { path: 'posters', element: <PostersPage /> },
         { path: 'faq', element: <FaqPage /> },
         { path: 'about', element: <AboutPage /> },
         { path: 'settings', element: <SettingsPage /> },

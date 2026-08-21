@@ -80,6 +80,36 @@ export async function getSpotifyAlbum(
   return data.album;
 }
 
+/** Playlists are a Spotify-only concept — there is no MusicBrainz fallback. */
+export async function searchSpotifyPlaylists(
+  query: string,
+  options: RequestOptions & { limit?: number; market?: string } = {},
+): Promise<{ items: AlbumSummary[]; provider: ProviderId }> {
+  const params = new URLSearchParams({
+    q: query,
+    type: 'playlist',
+    limit: String(options.limit ?? 12),
+  });
+  if (options.market) params.set('market', options.market);
+  const data = await getJson<SearchResponse>(`/api/search?${params}`, options);
+  return { items: data.results ?? [], provider: data.provider ?? 'spotify' };
+}
+
+/**
+ * A playlist normalised into the same `Album` shape a real album takes, so
+ * the response is parsed identically — the server wraps it under the same
+ * `album` key.
+ */
+export async function getSpotifyPlaylist(
+  id: string,
+  options: RequestOptions & { market?: string } = {},
+): Promise<Album> {
+  const params = new URLSearchParams({ id });
+  if (options.market) params.set('market', options.market);
+  const data = await getJson<AlbumResponse>(`/api/playlist?${params}`, options);
+  return data.album;
+}
+
 /** Accepts a Spotify URL, URI or bare id and returns the album id. */
 export function parseSpotifyAlbumId(input: string): string | null {
   const value = input.trim();

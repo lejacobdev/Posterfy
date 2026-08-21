@@ -84,3 +84,34 @@ export function cleanTitle(input: string): string {
 export function pluralize(count: number, singular: string, plural: string): string {
   return count === 1 ? singular : plural;
 }
+
+const RELATIVE_UNITS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+  ['year', 365 * 24 * 60 * 60 * 1000],
+  ['month', 30 * 24 * 60 * 60 * 1000],
+  ['week', 7 * 24 * 60 * 60 * 1000],
+  ['day', 24 * 60 * 60 * 1000],
+  ['hour', 60 * 60 * 1000],
+  ['minute', 60 * 1000],
+];
+
+/** "3 days ago", "in 2 hours" — falls back to "just now" under a minute. */
+export function formatRelativeTime(timestamp: number, locale: string, now = Date.now()): string {
+  const diff = timestamp - now;
+  for (const [unit, unitMs] of RELATIVE_UNITS) {
+    if (Math.abs(diff) >= unitMs) {
+      try {
+        return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
+          Math.round(diff / unitMs),
+          unit,
+        );
+      } catch {
+        break;
+      }
+    }
+  }
+  try {
+    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(0, 'minute');
+  } catch {
+    return '';
+  }
+}

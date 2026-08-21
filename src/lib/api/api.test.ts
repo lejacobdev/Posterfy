@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { parseSpotifyAlbumId } from './spotify';
-import { looksLikeAlbumLink } from './provider';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { getSpotifyPlaylist, parseSpotifyAlbumId, searchSpotifyPlaylists } from './spotify';
+import { getAlbum, looksLikeAlbumLink, searchPlaylists } from './provider';
 import { coverArtUrl } from './musicbrainz';
 import { createRateLimiter } from './client';
+import type { Album, AlbumSummary } from '@/lib/types';
 
 const ALBUM_ID = '4aawyAB9vmqN3uQ7FjRGTy';
 
@@ -81,5 +82,124 @@ describe('createRateLimiter', () => {
     await schedule(() => Promise.resolve());
     await schedule(() => Promise.resolve());
     expect(Date.now() - start).toBeGreaterThanOrEqual(35);
+  });
+});
+
+function mockJsonFetch(body: unknown, status = 200) {
+  return vi.fn(async () => new Response(JSON.stringify(body), { status }));
+}
+
+describe('searchSpotifyPlaylists', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('requests type=playlist and returns the server-normalised results', async () => {
+    let requestedUrl = '';
+    const summary: AlbumSummary = {
+      id: 'pl1',
+      source: 'spotify',
+      kind: 'playlist',
+      title: "Today's Top Hits",
+      artist: 'Spotify',
+      releaseDate: '',
+      coverUrl: null,
+      totalTracks: 50,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        requestedUrl = String(input);
+        return new Response(JSON.stringify({ results: [summary], provider: 'spotify' }), {
+          status: 200,
+        });
+      }),
+    );
+
+    const result = await searchSpotifyPlaylists('today');
+    expect(requestedUrl).toContain('/api/search?');
+    expect(requestedUrl).toContain('type=playlist');
+    expect(result).toEqual({ items: [summary], provider: 'spotify' });
+  });
+});
+
+describe('getSpotifyPlaylist', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('fetches /api/playlist and unwraps the album key', async () => {
+    let requestedUrl = '';
+    const album: Album = {
+      id: 'pl1',
+      source: 'spotify',
+      kind: 'playlist',
+      title: 'Road Trip',
+      artist: 'Jamie',
+      releaseDate: '',
+      coverUrl: null,
+      coverUrlHiRes: null,
+      tracks: [],
+      genres: [],
+      label: null,
+      totalDurationMs: 0,
+      uri: null,
+      externalUrl: null,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        requestedUrl = String(input);
+        return new Response(JSON.stringify({ album }), { status: 200 });
+      }),
+    );
+
+    const result = await getSpotifyPlaylist('pl1');
+    expect(requestedUrl).toContain('/api/playlist?id=pl1');
+    expect(result).toEqual(album);
+  });
+});
+
+describe('provider: playlist routing', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('searchPlaylists never falls back to MusicBrainz — it surfaces whatever the server returns', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockJsonFetch({
+        results: [{ id: 'pl1', source: 'spotify', kind: 'playlist', title: 'Chill', artist: '' }],
+        provider: 'spotify',
+      }),
+    );
+
+    const result = await searchPlaylists('chill');
+    expect(result.provider).toBe('spotify');
+    expect(result.degraded).toBe(false);
+    expect(result.items).toHaveLength(1);
+  });
+
+  it('returns an empty result for a blank query without calling the network', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await searchPlaylists('   ');
+    expect(result).toEqual({ items: [], provider: 'spotify', degraded: false });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('getAlbum routes a playlist-kind summary to /api/playlist, skipping the album fallback chain', async () => {
+    let requestedUrl = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        requestedUrl = String(input);
+        return new Response(
+          JSON.stringify({
+            album: { id: 'pl1', source: 'spotify', kind: 'playlist', title: 'Road Trip' },
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+
+    const album = await getAlbum({ id: 'pl1', source: 'spotify', kind: 'playlist' });
+    expect(requestedUrl).toContain('/api/playlist');
+    expect(album.title).toBe('Road Trip');
   });
 });

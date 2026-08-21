@@ -10,6 +10,7 @@ import './Header.css';
 
 const NAV_ITEMS: Array<{ to: string; key: string; icon: IconName }> = [
   { to: '/editor', key: 'nav.editor', icon: 'sliders' },
+  { to: '/posters', key: 'nav.myPosters', icon: 'layers' },
   { to: '/gallery', key: 'nav.gallery', icon: 'grid' },
   { to: '/faq', key: 'nav.faq', icon: 'info' },
   { to: '/about', key: 'nav.about', icon: 'heart' },

@@ -8,6 +8,17 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Playlist posters: search toggles between Albums and Playlists (Spotify only —
+  there is no keyless fallback for playlists). A chosen playlist is normalised
+  server-side into the same shape an album takes, so it flows through every
+  template, undo/redo and export unchanged; a playlist's mixed authorship
+  shows up as a per-track artist line in the tracklist, and its curator
+  becomes the poster's "artist".
+- My Posters (`/posters`): every album or playlist you've posterised is saved
+  automatically and listed most-recently-edited first, with a thumbnail,
+  relative time and a one-click reopen back into the editor exactly as you
+  left it. The editor's empty state now surfaces the four most recent as a
+  shortcut back in, alongside starting a new search.
 - Album search also matches by song title. Spotify search now asks for tracks
   alongside albums in the same request; a song's album is added to the results
   with a note showing which track matched, and the fuzzy ranker scores that

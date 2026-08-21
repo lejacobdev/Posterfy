@@ -3,6 +3,10 @@
   width: 100%;
 }
 
+.album-search > .segmented {
+  margin-bottom: var(--space-3);
+}
+
 .album-search__field {
   display: flex;
   align-items: center;

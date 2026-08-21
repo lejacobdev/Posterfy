@@ -7,12 +7,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Album } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
+import { listRecent, type RecentPoster } from '@/lib/store/recent';
 import { designHeight } from '@/lib/poster/formats';
 import { useI18n } from '@/i18n';
-import { releaseYear } from '@/lib/utils/format';
+import { releaseYear, formatRelativeTime } from '@/lib/utils/format';
+import { thumbnailUrl } from '@/lib/poster/cover';
 import { cn } from '@/lib/utils/misc';
 import { Seo } from '@/components/ui/Seo';
 import { Icon, type IconName } from '@/components/ui/Icon';
@@ -209,7 +211,20 @@ function EmptyState({
   onSelect: (album: Album) => void;
   onManual: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const navigate = useNavigate();
+  const { load } = usePoster();
+  // Read once on mount: this page only shows while there is no active poster,
+  // so nothing here changes the list while it is visible.
+  const [recent] = useState<RecentPoster[]>(() => listRecent().slice(0, 4));
+
+  const openRecent = useCallback(
+    (entry: RecentPoster) => {
+      load(entry.spec);
+      navigate('/editor');
+    },
+    [load, navigate],
+  );
 
   return (
     <div className="section" style={{ maxWidth: 680, margin: '0 auto' }}>
@@ -220,6 +235,39 @@ function EmptyState({
           {t('editor.emptyBody')}
         </p>
       </div>
+
+      {recent.length > 0 && (
+        <div className="editor-empty__recent">
+          <div className="editor-empty__recent-head">
+            <span>{t('posters.recentTitle')}</span>
+            <Link to="/posters">{t('posters.seeAll')}</Link>
+          </div>
+          <div className="editor-empty__recent-list">
+            {recent.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                className="editor-empty__recent-card"
+                onClick={() => openRecent(entry)}
+              >
+                <span className="editor-empty__recent-art">
+                  {entry.coverUrl ? (
+                    <img src={thumbnailUrl(entry.coverUrl)} alt="" width={40} height={40} />
+                  ) : (
+                    <Icon name={entry.kind === 'playlist' ? 'list' : 'disc'} size={16} />
+                  )}
+                </span>
+                <span className="editor-empty__recent-text">
+                  <span className="editor-empty__recent-title">{entry.title || '—'}</span>
+                  <span className="editor-empty__recent-time">
+                    {formatRelativeTime(entry.updatedAt, locale)}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <AlbumSearch onSelect={onSelect} onManual={onManual} autoFocus />
 
