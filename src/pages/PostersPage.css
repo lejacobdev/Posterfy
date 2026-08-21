@@ -9,6 +9,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  /* Without this, a long nowrap title forces the grid item to its full
+     intrinsic width instead of respecting the grid track — the classic
+     min-width:auto trap, and exactly what pushed the page wider than the
+     viewport on mobile. */
+  min-width: 0;
   padding: var(--space-3);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);

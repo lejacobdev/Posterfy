@@ -116,7 +116,14 @@
   cursor: default;
 }
 
-.lang-picker__menu {
+/*
+ * Specificity bumped to two classes on purpose: `.glass` also sets
+ * `position: relative`, and at equal specificity the winner would depend on
+ * CSS import order alone — which is exactly what silently turned this menu
+ * into an in-flow flex item (pushing the mobile header wider than the
+ * viewport) rather than the absolutely-positioned overlay it needs to be.
+ */
+.lang-picker .lang-picker__menu {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;

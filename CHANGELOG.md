@@ -70,6 +70,18 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- My Posters overflowed horizontally on mobile: a long title on `.poster-card`
+  (a flex item inside the CSS grid) hit the classic `min-width: auto` trap —
+  without an explicit `min-width: 0`, the card refused to shrink below its
+  nowrap title's full intrinsic width, dragging the whole page wider than the
+  viewport. Same fix for any future long title.
+- The language picker menu could blow out the mobile header's width: it sets
+  `position: absolute`, but shares a class with `.glass`, which also sets
+  `position: relative` at equal specificity — so the winner depended on CSS
+  import order alone, and it was losing, turning the dropdown into an in-flow
+  flex item. Bumped both it and the album-search results panel (same trap,
+  same class combination, still winning today only by coincidence of import
+  order) to a two-class selector so the correct value always wins.
 - The genres and record label toggles now actually show something. Spotify's
   `genres` field is consistently empty on this app's tier — both the album's
   own and, per live testing, the artist's as well — and `label` is frequently

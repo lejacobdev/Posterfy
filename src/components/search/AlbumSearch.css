@@ -75,7 +75,14 @@
   font-size: var(--text-xs);
 }
 
-.album-search__results {
+/*
+ * Specificity bumped to two classes: `.glass` also sets `position: relative`,
+ * and at equal specificity the winner depends on CSS import order alone —
+ * currently `absolute` happens to win, but that's a coincidence of bundling
+ * order, not something to rely on (see the same trap in Header.css's
+ * lang-picker menu, which lost that coin flip).
+ */
+.album-search .album-search__results {
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
