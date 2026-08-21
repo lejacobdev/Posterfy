@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { Album, AlbumSummary, ProviderId } from '@/lib/types';
 import { getAlbum, getAlbumFromLink, looksLikeAlbumLink, searchAlbums } from '@/lib/api/provider';
+import { rankAlbums } from '@/lib/search/fuzzy';
 import { isAbortError } from '@/lib/api/client';
 import { detectMarket } from '@/i18n/detect';
 import { useI18n } from '@/i18n';
@@ -26,6 +27,9 @@ export interface AlbumSearchProps {
 
 const DEBOUNCE_MS = 320;
 const MIN_QUERY = 2;
+/** Asked of the provider; ranked locally down to SHOWN_LIMIT. */
+const FETCH_LIMIT = 24;
+const SHOWN_LIMIT = 12;
 
 export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: AlbumSearchProps) {
   const { t } = useI18n();
@@ -67,10 +71,12 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
       try {
         const response = await searchAlbums(trimmed, {
           signal: controller.signal,
-          limit: 12,
+          // Over-fetch so the ranker has something to choose from: the record
+          // the user means is often outside the provider's own top few.
+          limit: FETCH_LIMIT,
           market: market.current,
         });
-        setResults(response.items);
+        setResults(rankAlbums(trimmed, response.items, { limit: SHOWN_LIMIT }));
         setProvider(response.provider);
         setActiveIndex(-1);
         setOpen(true);

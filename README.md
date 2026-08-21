@@ -13,7 +13,7 @@ Everything is rendered in the browser with the Canvas 2D API — no uploads, no 
 ## Highlights
 
 - **Guided wizard** — five steps from a record to a finished poster, each with a live preview, then a hand-off to the editor or a one-tap download.
-- **Live album search** — types-as-you-go against Spotify, with MusicBrainz + Cover Art Archive as a keyless fallback, and full manual entry when neither has the record.
+- **Live album search** — types-as-you-go against Spotify, with MusicBrainz + Cover Art Archive as a keyless fallback, and full manual entry when neither has the record. Results are re-ranked locally: typo-tolerant, accent-insensitive, and it understands `artist - album`.
 - **Six real templates** — Classic, Editorial, Minimal, Vinyl, Split and Duotone. Each is a genuinely different layout, not a recolour.
 - **Deep customisation** — templates, five print formats, four type pairings, palette extracted from the artwork, per-swatch colour control, element toggles, tracklist editing, grain, vignette, margins, corner radius and text scale.
 - **Print-ready export** — PNG, JPEG or WebP up to 300 DPI, sized for A4/A3/A2, 12×18 in and 24×36 in. Plus share-sheet and clipboard export.

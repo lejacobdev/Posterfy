@@ -446,7 +446,11 @@ async function handleSearch(url, res) {
     } catch (error) {
       // A Spotify outage should degrade to the keyless provider, not 500.
       if (error?.status === 429) throw error;
-      console.warn('[posterfy:api] spotify search failed, falling back:', error?.message);
+      // The status is the whole diagnosis — 401 means the credentials are
+      // dead, 403 means the app is restricted — so log it, not just the name.
+      console.warn(
+        `[posterfy:api] spotify search failed (${error?.message ?? 'unknown'}, status ${error?.status ?? '?'}), falling back to musicbrainz`,
+      );
     }
   }
 

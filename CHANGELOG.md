@@ -8,6 +8,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Fuzzy ranking on album search results (`src/lib/search/fuzzy.ts`): accent and
+  punctuation folding, typo tolerance via bounded optimal-string-alignment
+  distance, `artist - album` query splitting, and tie-breaks that prefer the
+  full album over a single and the original pressing over a reissue. Search now
+  over-fetches 24 results and shows the best 12.
+- Vercel Speed Insights on the hosted site.
 - Guided poster wizard at `/create`: five steps — record, look, size, contents,
   finish — with a live preview beside the choices and per-preset previews
   rendered from the chosen artwork. Ends with a one-tap PNG download or a
@@ -20,6 +26,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   still points there.
 - Search results request Spotify's smallest artwork (64 px) instead of the
   300 px image, which is what the 46 px result thumbnails actually need.
+- The privacy policy, about page and README now describe the anonymous
+  page-speed measurement instead of claiming there is no analytics at all.
 - Poster previews and exports select their artwork through `selectCoverUrl`,
   which falls back in both directions instead of only from hi-res to small.
 
