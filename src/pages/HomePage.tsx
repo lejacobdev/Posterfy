@@ -40,13 +40,19 @@ export default function HomePage() {
   const templatesHeadRef = useReveal<HTMLDivElement>();
 
   // Three demo posters for the hero stack, each in a different style.
+  // PosterStack positions purely by array order (left, middle, right), so
+  // swapping which poster reads as left vs. middle is just a reorder here.
   const heroSpecs = useMemo<PosterSpec[]>(
     () =>
-      [0, 1, 2].map((index) => ({
-        album: demoAlbum(index),
+      [
+        { album: 1, preset: 5 },
+        { album: 0, preset: 0 },
+        { album: 2, preset: 1 },
+      ].map(({ album, preset }) => ({
+        album: demoAlbum(album),
         options: {
           ...DEFAULT_OPTIONS,
-          ...(STYLE_PRESETS[index === 0 ? 0 : index === 1 ? 5 : 1]?.options ?? {}),
+          ...(STYLE_PRESETS[preset]?.options ?? {}),
           palette: [],
           grain: 0.1,
         },

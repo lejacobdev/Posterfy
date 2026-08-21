@@ -61,9 +61,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   moved from a bright, saturated violet to a more muted indigo, the hero's
   gradient text dropped from a three-stop rainbow to a plain two-stop fade,
   and the background aurora blobs are now fewer, softer and slower rather
-  than a fast-drifting neon wash. The primary button now shows a thin
-  gradient ring on a dark fill at rest, with the gradient fill and glow
-  reserved for hover, instead of glowing constantly.
+  than a fast-drifting neon wash. The primary button is now genuinely
+  transparent at rest, like the ghost/outline buttons, with just a thin
+  gradient ring around it; the gradient fill and glow are reserved for
+  hover, instead of glowing constantly.
+- Swapped which demo poster reads as left vs. middle in the homepage hero's
+  3D stack.
 
 ### Fixed
 
