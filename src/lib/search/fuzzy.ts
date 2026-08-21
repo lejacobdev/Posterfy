@@ -269,6 +269,14 @@ const SCORE_FLOOR = 0.34;
 export interface RankOptions {
   /** Cap on results returned. */
   limit?: number;
+  /**
+   * Return nothing rather than falling back to the given order when no result
+   * scores. Set it when the input is a guess — cached results for a shorter
+   * query, say — where nothing vouches for the list answering this query.
+   * Leave it off for a provider response, which matched the query somehow even
+   * if on an alias the scorer cannot see.
+   */
+  strict?: boolean;
 }
 
 /**
@@ -294,8 +302,10 @@ export function rankAlbums(
   });
 
   // A query that matches nothing well is more likely our scoring being too
-  // strict than the provider being wrong, so fall back to what it sent.
+  // strict than the provider being wrong, so fall back to what it sent —
+  // unless the caller says the list is only a guess.
   if (scored.length === 0) {
+    if (options.strict) return [];
     return options.limit ? results.slice(0, options.limit) : [...results];
   }
 

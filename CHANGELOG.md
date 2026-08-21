@@ -8,6 +8,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Search result caching: an exact repeat answers from memory, and a shorter
+  query already fetched is re-ranked to fill the list while the real response
+  is in flight. The debounce dropped from 320 ms to 180 ms, and the provider
+  config is prefetched so the first search is one round trip rather than two.
 - Fuzzy ranking on album search results (`src/lib/search/fuzzy.ts`): accent and
   punctuation folding, typo tolerance via bounded optimal-string-alignment
   distance, `artist - album` query splitting, and tie-breaks that prefer the
@@ -21,6 +25,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Live search no longer paints stale results. Four races are gone: a response
+  landing after the box was cleared repopulated the list; a slow response could
+  overwrite a newer one; the spinner switched off when a superseded request
+  aborted; and a response landing after an album was chosen reopened the
+  dropdown. Enter also no longer opens an album from the previous query while a
+  newer search is still in flight.
 - The Vinyl template no longer paints lit squares in its sleeve's top corners.
   The sleeve-opening highlight was a square `fillRect` over a rounded sleeve,
   so it filled the space the corner radius had cut away; it is now clipped to

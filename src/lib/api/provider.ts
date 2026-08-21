@@ -33,6 +33,17 @@ export interface SearchOptions extends RequestOptions {
 }
 
 /**
+ * Fetches the provider config ahead of time.
+ *
+ * `searchAlbums` awaits it before it can pick a backend, so without this the
+ * very first search is two serial round trips instead of one. Call it when the
+ * search box mounts; it is memoised, so later calls are free.
+ */
+export function prefetchProviders(): void {
+  void getProviderConfig();
+}
+
+/**
  * Searches for albums.
  *
  * Whenever our own API is reachable it answers, because it covers *both*

@@ -7,8 +7,15 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { Album, AlbumSummary, ProviderId } from '@/lib/types';
-import { getAlbum, getAlbumFromLink, looksLikeAlbumLink, searchAlbums } from '@/lib/api/provider';
+import {
+  getAlbum,
+  getAlbumFromLink,
+  looksLikeAlbumLink,
+  prefetchProviders,
+  searchAlbums,
+} from '@/lib/api/provider';
 import { rankAlbums } from '@/lib/search/fuzzy';
+import { searchCache } from '@/lib/search/cache';
 import { isAbortError } from '@/lib/api/client';
 import { detectMarket } from '@/i18n/detect';
 import { useI18n } from '@/i18n';
@@ -25,7 +32,11 @@ export interface AlbumSearchProps {
   placeholder?: string;
 }
 
-const DEBOUNCE_MS = 320;
+/**
+ * Short enough to feel live, long enough that an average typing burst is one
+ * request. Cache hits skip it entirely and render on the same tick.
+ */
+const DEBOUNCE_MS = 180;
 const MIN_QUERY = 2;
 /** Asked of the provider; ranked locally down to SHOWN_LIMIT. */
 const FETCH_LIMIT = 24;
@@ -50,19 +61,75 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
   const inputRef = useRef<HTMLInputElement>(null);
   const market = useRef<string | undefined>(detectMarket());
 
+  /**
+   * Bumped whenever what is on screen should stop being driven by whatever is
+   * in flight — a new search, a cleared box, an album chosen. A response whose
+   * id is no longer current is dropped rather than painted, which is what
+   * stopped results from reappearing under an empty search box.
+   */
+  const requestId = useRef(0);
+
   const isLink = looksLikeAlbumLink(query);
 
-  // Debounced search. Every run cancels the previous request.
+  /** The query the visible results answer, so Enter can never pick a stale row. */
+  const [resultsQuery, setResultsQuery] = useState('');
+
+  const supersede = useCallback(() => {
+    requestId.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, []);
+
+  // Warm the provider config now, so the first search is one round trip rather
+  // than config-then-search.
+  useEffect(() => {
+    prefetchProviders();
+  }, []);
+
   useEffect(() => {
     const trimmed = query.trim();
+
     if (trimmed.length < MIN_QUERY || isLink) {
+      supersede();
       setResults([]);
+      setResultsQuery('');
       setLoading(false);
       return undefined;
     }
 
+    // An exact repeat — a backspace and retype, or a query from a minute ago —
+    // never touches the network.
+    const cached = searchCache.get(trimmed);
+    if (cached) {
+      supersede();
+      setResults(rankAlbums(trimmed, cached.items, { limit: SHOWN_LIMIT }));
+      setResultsQuery(trimmed);
+      setProvider(cached.provider);
+      setActiveIndex(-1);
+      setError(null);
+      setLoading(false);
+      return undefined;
+    }
+
+    // Nothing exact, but a shorter query we already fetched usually covers this
+    // one. Rank those for the new query and show them while the real response
+    // is on its way, so the list moves with every keystroke.
+    const prefix = searchCache.findPrefix(trimmed);
+    if (prefix) {
+      // `strict`, because these were fetched for a different query: show them
+      // only if they genuinely score against this one, never as a fallback.
+      const provisional = rankAlbums(trimmed, prefix.items, { limit: SHOWN_LIMIT, strict: true });
+      if (provisional.length > 0) {
+        setResults(provisional);
+        setResultsQuery(trimmed);
+        setProvider(prefix.provider);
+        setActiveIndex(-1);
+      }
+    }
+
     const timer = setTimeout(async () => {
-      abortRef.current?.abort();
+      supersede();
+      const id = requestId.current;
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -76,21 +143,28 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
           limit: FETCH_LIMIT,
           market: market.current,
         });
+        if (id !== requestId.current) return;
+
+        searchCache.set(trimmed, { items: response.items, provider: response.provider });
         setResults(rankAlbums(trimmed, response.items, { limit: SHOWN_LIMIT }));
+        setResultsQuery(trimmed);
         setProvider(response.provider);
         setActiveIndex(-1);
         setOpen(true);
       } catch (searchError) {
-        if (isAbortError(searchError)) return;
+        if (isAbortError(searchError) || id !== requestId.current) return;
         setError(online ? t('errors.searchFailed') : t('errors.offline'));
         setResults([]);
+        setResultsQuery('');
       } finally {
-        setLoading(false);
+        // Only the newest request owns the spinner. Without this an aborted
+        // request switched it off while its replacement was still running.
+        if (id === requestId.current) setLoading(false);
       }
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [query, isLink, online, t]);
+  }, [query, isLink, online, t, supersede]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -105,6 +179,8 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
 
   const choose = useCallback(
     async (summary: AlbumSummary) => {
+      // Nothing still in flight may reopen the list behind the chosen album.
+      supersede();
       setLoadingId(summary.id);
       setError(null);
       try {
@@ -113,13 +189,14 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
         setOpen(false);
         setQuery('');
         setResults([]);
+        setResultsQuery('');
       } catch {
         setError(t('errors.albumFailed'));
       } finally {
         setLoadingId(null);
       }
     },
-    [onSelect, t],
+    [onSelect, t, supersede],
   );
 
   const loadLink = useCallback(async () => {
@@ -140,6 +217,13 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
     }
   }, [query, onSelect, t]);
 
+  /**
+   * Whether the rows on screen answer what is currently typed. While a search
+   * is in flight they can still belong to the previous query, and acting on
+   * them would open an album the user never picked.
+   */
+  const resultsAreCurrent = resultsQuery === query.trim();
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault();
@@ -147,6 +231,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
         void loadLink();
         return;
       }
+      if (!resultsAreCurrent) return;
       const target = results[activeIndex] ?? results[0];
       if (target) void choose(target);
       return;
