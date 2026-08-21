@@ -15,11 +15,13 @@ import { contrastRatio } from '@/lib/color/color';
 
 interface Recorder {
   calls: Record<string, number>;
+  texts: string[];
 }
 
 /** Minimal 2D context stand-in that records what the renderer asked for. */
 function createContextStub(): CanvasRenderingContext2D & Recorder {
   const calls: Record<string, number> = {};
+  const texts: string[] = [];
   const record = (name: string) => {
     calls[name] = (calls[name] ?? 0) + 1;
   };
@@ -30,6 +32,7 @@ function createContextStub(): CanvasRenderingContext2D & Recorder {
 
   const stub: Record<string, unknown> = {
     calls,
+    texts,
     canvas: { width: 0, height: 0 },
     save: () => record('save'),
     restore: () => record('restore'),
@@ -52,7 +55,10 @@ function createContextStub(): CanvasRenderingContext2D & Recorder {
     drawImage: () => record('drawImage'),
     fillText: (text: string) => {
       record('fillText');
-      if (typeof text === 'string' && text.length > 0) record('fillTextNonEmpty');
+      if (typeof text === 'string' && text.length > 0) {
+        record('fillTextNonEmpty');
+        texts.push(text);
+      }
     },
     measureText: (text: string) => ({ width: String(text).length * 6 }),
     createLinearGradient: () => gradient,
@@ -167,6 +173,25 @@ describe('renderPoster', () => {
   it('throws a clear error when the context is unavailable', () => {
     const canvas = { width: 0, height: 0, getContext: () => null } as unknown as HTMLCanvasElement;
     expect(() => renderPoster({ canvas, spec: spec(), width: 400 })).toThrow(/context/i);
+  });
+});
+
+describe('meta column', () => {
+  it('prints the values without a leading marker', () => {
+    // The ">" that used to prefix each value read as a "greater than", not as
+    // the arrow it was meant to be.
+    for (const template of TEMPLATE_IDS) {
+      const ctx = createContextStub();
+      renderPoster({ canvas: createCanvasStub(ctx), spec: spec({ template }), width: 600 });
+      const prefixed = ctx.texts.filter((text) => /^\s*[>»›]/.test(text));
+      expect(prefixed, `${template} drew a prefixed value`).toEqual([]);
+    }
+  });
+
+  it('still prints the values themselves', () => {
+    const ctx = createContextStub();
+    renderPoster({ canvas: createCanvasStub(ctx), spec: spec(), width: 600 });
+    expect(ctx.texts).toContain('1999');
   });
 });
 

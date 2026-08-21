@@ -84,7 +84,6 @@ export function renderVinyl(rc: RenderContext, locale: string): void {
     width: metaWidth,
     fontSize: metaSize,
     locale,
-    bullet: '',
   });
 
   if (spec.options.showTracklist && spec.album.tracks.length > 0) {
@@ -144,7 +143,13 @@ function drawSleeve(rc: RenderContext, x: number, y: number, size: number): void
   }
 
   // Sleeve opening: a soft highlight along the top edge.
+  //
+  // Clipped to the sleeve. Without this the highlight is a square fillRect
+  // over a rounded sleeve, so it paints two lit squares in the space the
+  // rounded corners cut away — visible as notched top corners.
   ctx.save();
+  roundedRectPath(ctx, x, y, size, size, radius);
+  ctx.clip();
   const gradient = ctx.createLinearGradient(x, y, x, y + size * 0.06);
   gradient.addColorStop(0, withAlpha('#ffffff', 0.22));
   gradient.addColorStop(1, withAlpha('#ffffff', 0));

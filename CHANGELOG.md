@@ -21,6 +21,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The Vinyl template no longer paints lit squares in its sleeve's top corners.
+  The sleeve-opening highlight was a square `fillRect` over a rounded sleeve,
+  so it filled the space the corner radius had cut away; it is now clipped to
+  the sleeve.
 - Style presets are applied as a starting point rather than a layer. Because
   presets are partial, picking Vinyl Club and then Editorial Press used to
   leave Vinyl Club's rounded artwork and vignette behind — the wizard's style
@@ -34,6 +38,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The editor moved from `/create` to `/editor`, and the header nav item is now
   **Editor**. `/create` opens the wizard; the "Start creating" call to action
   still points there.
+- Poster meta values (release year, duration, genres, label) no longer carry a
+  leading `>`, which read as a "greater than" rather than the arrow it meant.
 - Search results request Spotify's smallest artwork (64 px) instead of the
   300 px image, which is what the 46 px result thumbnails actually need.
 - The privacy policy, about page and README now describe the anonymous

@@ -194,8 +194,6 @@ export interface MetaColumnOptions {
   width: number;
   fontSize: number;
   locale: string;
-  /** Prefix drawn before each value, e.g. `>`. */
-  bullet?: string;
   align?: CanvasTextAlign;
 }
 
@@ -204,7 +202,7 @@ export function drawMetaColumn(rc: RenderContext, options: MetaColumnOptions): n
   if (entries.length === 0) return 0;
 
   const { ctx, theme } = rc;
-  const { x, y, width, fontSize, bullet = '>', align = 'left' } = options;
+  const { x, y, width, fontSize, align = 'left' } = options;
   const gap = fontSize * 1.85;
   let cursorY = y + fontSize;
 
@@ -218,8 +216,13 @@ export function drawMetaColumn(rc: RenderContext, options: MetaColumnOptions): n
 
     ctx.fillStyle = theme.foreground;
     const valueFont = monoFont(rc, fontSize, 700);
-    const text = bullet ? `${bullet} ${entry.value}` : entry.value;
-    drawText(ctx, truncate(ctx, text, width, valueFont), x, cursorY + fontSize * 1.25, valueFont);
+    drawText(
+      ctx,
+      truncate(ctx, entry.value, width, valueFont),
+      x,
+      cursorY + fontSize * 1.25,
+      valueFont,
+    );
 
     cursorY += gap + fontSize * 0.4;
   }
