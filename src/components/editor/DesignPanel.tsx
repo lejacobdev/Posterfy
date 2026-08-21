@@ -1,6 +1,6 @@
 /** Design controls: presets, template, format, colours, typography, finishing. */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { FontPairId, FormatId, PaletteStyle, TemplateId } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
 import { useI18n } from '@/i18n';
@@ -9,6 +9,12 @@ import { FONT_PAIRS, FONT_PAIR_IDS } from '@/lib/poster/fonts';
 import { FORMAT_IDS, POSTER_FORMATS } from '@/lib/poster/formats';
 import { extractPalette } from '@/lib/color/color';
 import { loadCover } from '@/lib/poster/cover';
+import {
+  listCustomTemplates,
+  removeCustomTemplate,
+  saveCustomTemplate,
+  type CustomTemplate,
+} from '@/lib/store/customTemplates';
 import { useToast } from '@/components/ui/Toast';
 import { Icon } from '@/components/ui/Icon';
 import {
@@ -16,6 +22,7 @@ import {
   PanelSection,
   SegmentedControl,
   Slider,
+  TextField,
   Toggle,
 } from '@/components/ui/Controls';
 
@@ -23,8 +30,31 @@ const PALETTE_STYLES: PaletteStyle[] = ['bar', 'strip', 'dots', 'none'];
 
 export function DesignPanel() {
   const { t } = useI18n();
-  const { options, album, setOption, setOptions, applyPreset } = usePoster();
+  const { options, album, setOption, setOptions, applyPreset, applyCustomTemplate } = usePoster();
   const { notify } = useToast();
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>(() =>
+    listCustomTemplates(),
+  );
+  const [templateName, setTemplateName] = useState('');
+
+  const saveTemplate = useCallback(() => {
+    const name = templateName.trim();
+    if (!name) return;
+    saveCustomTemplate(name, options);
+    setCustomTemplates(listCustomTemplates());
+    setTemplateName('');
+    notify(t('editor.customTemplateSaved'), 'success', 2000);
+  }, [templateName, options, notify, t]);
+
+  const deleteTemplate = useCallback(
+    (event: React.MouseEvent, id: string) => {
+      event.stopPropagation();
+      if (!window.confirm(t('editor.deleteCustomTemplateConfirm'))) return;
+      removeCustomTemplate(id);
+      setCustomTemplates(listCustomTemplates());
+    },
+    [t],
+  );
 
   const resample = useCallback(async () => {
     if (!album.coverUrl) return;
@@ -66,6 +96,61 @@ export function DesignPanel() {
             </button>
           ))}
         </div>
+      </PanelSection>
+
+      <PanelSection title={t('editor.sectionCustomTemplates')} icon="layers">
+        <div className="custom-template-save">
+          <TextField
+            label={t('editor.customTemplateName')}
+            value={templateName}
+            onChange={setTemplateName}
+            placeholder={t('editor.customTemplateNamePlaceholder')}
+            maxLength={40}
+          />
+          <button
+            type="button"
+            className="btn btn--outline btn--block"
+            disabled={!templateName.trim()}
+            onClick={saveTemplate}
+          >
+            <Icon name="layers" size={15} />
+            {t('editor.saveAsTemplate')}
+          </button>
+        </div>
+
+        {customTemplates.length > 0 ? (
+          <div className="custom-template-list">
+            {customTemplates.map((template) => (
+              <article
+                key={template.id}
+                className="custom-template-chip"
+                role="button"
+                tabIndex={0}
+                onClick={() => applyCustomTemplate(template)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') applyCustomTemplate(template);
+                }}
+              >
+                <span className="custom-template-chip__text">
+                  <span className="custom-template-chip__name">{template.name}</span>
+                  <span className="custom-template-chip__meta">
+                    {TEMPLATE_META.find((meta) => meta.id === template.baseTemplate)?.name}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  className="custom-template-chip__remove"
+                  aria-label={t('editor.deleteCustomTemplate')}
+                  onClick={(event) => deleteTemplate(event, template.id)}
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="field__hint">{t('editor.customTemplateEmpty')}</p>
+        )}
       </PanelSection>
 
       <PanelSection title={t('editor.sectionTemplate')} icon="layout">

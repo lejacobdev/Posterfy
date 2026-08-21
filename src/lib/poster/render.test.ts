@@ -37,6 +37,7 @@ function createContextStub(): CanvasRenderingContext2D & Recorder {
     save: () => record('save'),
     restore: () => record('restore'),
     scale: () => record('scale'),
+    translate: () => record('translate'),
     setTransform: () => record('setTransform'),
     clearRect: () => record('clearRect'),
     fillRect: () => record('fillRect'),
@@ -173,6 +174,79 @@ describe('renderPoster', () => {
   it('throws a clear error when the context is unavailable', () => {
     const canvas = { width: 0, height: 0, getContext: () => null } as unknown as HTMLCanvasElement;
     expect(() => renderPoster({ canvas, spec: spec(), width: 400 })).toThrow(/context/i);
+  });
+});
+
+describe('layout overrides', () => {
+  it('reports a layout box for the elements every template actually draws', () => {
+    for (const template of TEMPLATE_IDS) {
+      const ctx = createContextStub();
+      const canvas = createCanvasStub(ctx);
+      let layout: Map<string, unknown> | undefined;
+      renderPoster({
+        canvas,
+        spec: spec({ template }),
+        width: 600,
+        onLayout: (result) => {
+          layout = result;
+        },
+      });
+      expect(layout, `${template} called onLayout`).toBeDefined();
+      // Every template draws its own artwork and a title, whatever else it does.
+      expect(layout?.has('cover'), `${template} registered cover`).toBe(true);
+      expect(layout?.has('title'), `${template} registered title`).toBe(true);
+    }
+  });
+
+  it('never touches translate, and calls scale only once (the base design-grid scale), when no element has an override', () => {
+    // withOverride() wraps every element in every template; this is what
+    // guarantees a poster nobody has repositioned still renders through
+    // exactly the same draw path as before this feature existed. `translate`
+    // is only ever called from inside withOverride, so zero calls to it means
+    // no element's transform ran; `scale` is also called once by renderPoster
+    // itself for the 1000-unit design grid, so 1 (not 0) is the untouched count.
+    for (const template of TEMPLATE_IDS) {
+      const ctx = createContextStub();
+      renderPoster({ canvas: createCanvasStub(ctx), spec: spec({ template }), width: 600 });
+      expect(ctx.calls.translate ?? 0, `${template} called translate`).toBe(0);
+      expect(ctx.calls.scale ?? 0, `${template} called scale`).toBe(1);
+    }
+  });
+
+  it('moves the title element by dx/dy without affecting anything else', () => {
+    const ctx = createContextStub();
+    let layout: Map<string, { x: number; y: number }> | undefined;
+    renderPoster({
+      canvas: createCanvasStub(ctx),
+      spec: spec({ layoutOverrides: { title: { dx: 25, dy: -10, scale: 1 } } }),
+      width: 600,
+      onLayout: (result) => {
+        layout = result as Map<string, { x: number; y: number }>;
+      },
+    });
+
+    const baseline = createContextStub();
+    let baseLayout: Map<string, { x: number; y: number }> | undefined;
+    renderPoster({
+      canvas: createCanvasStub(baseline),
+      spec: spec(),
+      width: 600,
+      onLayout: (result) => {
+        baseLayout = result as Map<string, { x: number; y: number }>;
+      },
+    });
+
+    const moved = layout?.get('title');
+    const original = baseLayout?.get('title');
+    expect(moved).toBeDefined();
+    expect(original).toBeDefined();
+    expect(moved?.x).toBeCloseTo((original?.x ?? 0) + 25);
+    expect(moved?.y).toBeCloseTo((original?.y ?? 0) - 10);
+
+    // Nothing else moved.
+    const movedCover = layout?.get('cover');
+    const originalCover = baseLayout?.get('cover');
+    expect(movedCover).toEqual(originalCover);
   });
 });
 

@@ -8,6 +8,24 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Advanced editor mode: a new "Advanced" tab lets you drag any poster element
+  (cover, title, artist, tracklist, palette, scan code, custom note) directly
+  on the live preview to move or resize it, or dial it in with numeric
+  horizontal/vertical/size fields in a side panel — both stay in sync, and
+  every nudge folds into the same undo/redo history as everything else. A
+  poster with no manual adjustments renders exactly as before; the
+  per-element position/size deltas are stored separately from each
+  template's own layout math rather than replacing it.
+- Four new curated font pairings — Humanist, Typewriter, Literary and Impact —
+  alongside the original Mono, Grotesk, Editorial and Condensed, doubling the
+  type library. All are self-hosted or safe cross-platform system stacks, so
+  there's no upload step and no extra assets to fetch.
+- Custom templates: save the current design (template, colours, type, every
+  finishing slider, and any advanced-mode position/size tweaks) as a named
+  template from the Design panel, then apply it to a completely different
+  album later — the album's own title, artist and note are left alone, only
+  the design changes. Saved templates persist locally and can be renamed or
+  removed.
 - A "make your playlist public" explainer in playlist search: Spotify only
   serves playlist tracks to this app for playlists set to public, so the
   toggle now surfaces a collapsible guide — a small CSS mock of the ••• menu,

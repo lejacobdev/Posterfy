@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { PosterProvider, usePoster } from './poster';
 import { createEmptyAlbum, DEFAULT_OPTIONS, STYLE_PRESETS } from '@/lib/poster/defaults';
+import { saveCustomTemplate } from './customTemplates';
 import type { Album } from '@/lib/types';
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -80,6 +81,34 @@ describe('poster store', () => {
     act(() => result.current.applyPreset(club));
     act(() => result.current.undo());
     expect(result.current.options.coverRadius).toBe(DEFAULT_OPTIONS.coverRadius);
+    expect(result.current.options.template).toBe(DEFAULT_OPTIONS.template);
+  });
+
+  it('applies a saved custom template', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    const template = saveCustomTemplate('My Look', {
+      ...DEFAULT_OPTIONS,
+      template: 'duotone',
+      fontPair: 'impact',
+    });
+    act(() => result.current.applyCustomTemplate(template));
+    expect(result.current.options.template).toBe('duotone');
+    expect(result.current.options.fontPair).toBe('impact');
+  });
+
+  it('keeps this poster’s own text content when applying a custom template', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setOption('titleOverride', 'This Album'));
+    const template = saveCustomTemplate('My Look', DEFAULT_OPTIONS);
+    act(() => result.current.applyCustomTemplate(template));
+    expect(result.current.options.titleOverride).toBe('This Album');
+  });
+
+  it('undoes a custom template back to what was there before', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    const template = saveCustomTemplate('My Look', { ...DEFAULT_OPTIONS, template: 'split' });
+    act(() => result.current.applyCustomTemplate(template));
+    act(() => result.current.undo());
     expect(result.current.options.template).toBe(DEFAULT_OPTIONS.template);
   });
 
@@ -198,5 +227,58 @@ describe('poster store', () => {
 
     expect(result.current.canUndo).toBe(false);
     expect(result.current.canRedo).toBe(false);
+  });
+
+  it('sets a layout override for one element without touching the others', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setLayoutOverride('title', { dx: 10, dy: -4, scale: 1.2 }));
+
+    expect(result.current.options.layoutOverrides).toEqual({
+      title: { dx: 10, dy: -4, scale: 1.2 },
+    });
+
+    act(() => result.current.setLayoutOverride('cover', { dx: 0, dy: 5, scale: 1 }));
+    expect(result.current.options.layoutOverrides).toEqual({
+      title: { dx: 10, dy: -4, scale: 1.2 },
+      cover: { dx: 0, dy: 5, scale: 1 },
+    });
+  });
+
+  it('resets a single element back to the template default', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setLayoutOverride('title', { dx: 10, dy: -4, scale: 1.2 }));
+    act(() => result.current.setLayoutOverride('cover', { dx: 0, dy: 5, scale: 1 }));
+
+    act(() => result.current.resetLayoutOverride('title'));
+    expect(result.current.options.layoutOverrides).toEqual({ cover: { dx: 0, dy: 5, scale: 1 } });
+  });
+
+  it('resets every element at once', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setLayoutOverride('title', { dx: 10, dy: -4, scale: 1.2 }));
+    act(() => result.current.setLayoutOverride('cover', { dx: 0, dy: 5, scale: 1 }));
+
+    act(() => result.current.resetAllLayoutOverrides());
+    expect(result.current.options.layoutOverrides).toEqual({});
+  });
+
+  it('undoes a layout override like any other edit', () => {
+    const { result } = renderHook(() => usePoster(), { wrapper });
+    act(() => result.current.setLayoutOverride('title', { dx: 10, dy: -4, scale: 1.2 }));
+    expect(result.current.canUndo).toBe(true);
+
+    act(() => result.current.undo());
+    expect(result.current.options.layoutOverrides).toEqual({});
+  });
+
+  it('persists layout overrides to localStorage and restores them on remount', () => {
+    const first = renderHook(() => usePoster(), { wrapper });
+    act(() => first.result.current.setLayoutOverride('artist', { dx: 3, dy: 3, scale: 1 }));
+    first.unmount();
+
+    const second = renderHook(() => usePoster(), { wrapper });
+    expect(second.result.current.options.layoutOverrides).toEqual({
+      artist: { dx: 3, dy: 3, scale: 1 },
+    });
   });
 });

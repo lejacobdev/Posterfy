@@ -6,8 +6,8 @@
  * over a newer one.
  */
 
-import { useEffect, useRef, useState } from 'react';
-import type { LoadedCover, PosterSpec } from '@/lib/types';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { ElementId, LayoutBox, LoadedCover, PosterSpec } from '@/lib/types';
 import { designHeight } from '@/lib/poster/formats';
 import { preparePosterAssets, renderPoster } from '@/lib/poster/render';
 import { usePosterLabels, useI18n } from '@/i18n';
@@ -26,6 +26,17 @@ export interface PosterCanvasProps {
   onPalette?: (palette: string[]) => void;
   onRenderStateChange?: (state: 'loading' | 'ready' | 'error') => void;
   ariaLabel?: string;
+  /**
+   * Called once per render with where every element actually ended up (in
+   * design-grid units) — advanced mode's drag/select overlay reads this to
+   * position its hit targets. Ignored by every other caller.
+   */
+  onLayout?: (layout: Map<ElementId, LayoutBox>) => void;
+  /**
+   * Extra content absolutely positioned over the canvas, filling the same
+   * box — the advanced-mode drag/select overlay, when the caller wants one.
+   */
+  overlay?: ReactNode;
 }
 
 export function PosterCanvas({
@@ -35,6 +46,8 @@ export function PosterCanvas({
   onPalette,
   onRenderStateChange,
   ariaLabel,
+  onLayout,
+  overlay,
 }: PosterCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -117,6 +130,7 @@ export function PosterCanvas({
           labels,
           cover: assetsRef.current.cover,
           scanImage: assetsRef.current.scan,
+          onLayout,
         });
         setStatus('ready');
         onRenderStateChange?.('ready');
@@ -131,7 +145,7 @@ export function PosterCanvas({
     return () => {
       cancelled = true;
     };
-    // `labels`/`onPalette` are stable enough; spec identity drives re-renders.
+    // `labels`/`onPalette`/`onLayout` are stable enough; spec identity drives re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spec, containerWidth, maxRenderWidth, locale, labels]);
 
@@ -152,6 +166,7 @@ export function PosterCanvas({
         }
       />
       {status === 'loading' && <div className="poster-canvas__shimmer" aria-hidden="true" />}
+      {overlay}
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   posterArtist,
   posterTitle,
   scaled,
+  withOverride,
 } from '../blocks';
 import { drawCoverPlaceholder, drawImageBox, roundedRectPath } from '../effects';
 import { drawText, splitIntoColumns, truncate } from '../text';
@@ -29,7 +30,7 @@ export function renderVinyl(rc: RenderContext, locale: string): void {
   drawBackground(rc);
 
   const box = contentBox(rc);
-  const { ctx, theme, spec } = rc;
+  const { theme, spec } = rc;
   const gap = rc.height * 0.026;
 
   const titleSize = scaled(rc, box.width * 0.062);
@@ -46,31 +47,56 @@ export function renderVinyl(rc: RenderContext, locale: string): void {
   const sleeveY = box.y;
 
   // Disc first so the sleeve overlaps it, selling the "slipping out" look.
+  // The two move as one 'cover' element — they're one visual unit, and
+  // letting the disc lag behind a repositioned sleeve would tear it apart.
   const discRadius = sleeveSize * 0.46;
   const discCx = sleeveX + sleeveSize + sleeveSize * 0.2;
   const discCy = sleeveY + sleeveSize / 2;
-  drawDisc(rc, discCx, discCy, discRadius);
-
-  drawSleeve(rc, sleeveX, sleeveY, sleeveSize);
+  withOverride(
+    rc,
+    'cover',
+    { x: sleeveX, y: sleeveY },
+    { width: discCx + discRadius - sleeveX, height: sleeveSize },
+    () => {
+      drawDisc(rc, discCx, discCy, discRadius);
+      drawSleeve(rc, sleeveX, sleeveY, sleeveSize);
+    },
+  );
 
   let cursorY = sleeveY + sleeveSize + gap * 1.3;
 
-  const title = drawHeadline(rc, posterTitle(rc), {
-    x: box.x,
-    y: cursorY,
-    width: box.width,
-    maxSize: titleSize,
-    maxLines: 2,
-  });
+  const titleY = cursorY;
+  const title = withOverride(
+    rc,
+    'title',
+    { x: box.x, y: titleY },
+    { width: box.width, height: titleSize * 2 },
+    () =>
+      drawHeadline(rc, posterTitle(rc), {
+        x: box.x,
+        y: titleY,
+        width: box.width,
+        maxSize: titleSize,
+        maxLines: 2,
+      }),
+  );
   cursorY += title.height + gap * 0.3;
 
-  const artist = drawFittedLine(rc, posterArtist(rc), {
-    x: box.x,
-    y: cursorY,
-    width: box.width * 0.8,
-    maxSize: artistSize,
-    color: theme.accent,
-  });
+  const artistY = cursorY;
+  const artist = withOverride(
+    rc,
+    'artist',
+    { x: box.x, y: artistY },
+    { width: box.width * 0.8, height: artistSize },
+    () =>
+      drawFittedLine(rc, posterArtist(rc), {
+        x: box.x,
+        y: artistY,
+        width: box.width * 0.8,
+        maxSize: artistSize,
+        color: theme.accent,
+      }),
+  );
   cursorY += artist.fontSize * 1.7;
 
   drawRule(rc, box.x, cursorY, box.width, Math.max(1, rc.width * 0.0014));
@@ -78,42 +104,69 @@ export function renderVinyl(rc: RenderContext, locale: string): void {
 
   const sidesTop = cursorY;
   const metaWidth = box.width * 0.26;
-  drawMetaColumn(rc, {
-    x: box.x,
-    y: sidesTop,
-    width: metaWidth,
-    fontSize: metaSize,
-    locale,
-  });
+  withOverride(
+    rc,
+    'meta',
+    { x: box.x, y: sidesTop },
+    { width: metaWidth, height: metaSize * 8 },
+    () =>
+      drawMetaColumn(rc, { x: box.x, y: sidesTop, width: metaWidth, fontSize: metaSize, locale }),
+  );
 
   if (spec.options.showTracklist && spec.album.tracks.length > 0) {
-    drawSides(rc, {
-      x: box.x + metaWidth + box.width * 0.04,
-      y: sidesTop,
-      width: box.width - metaWidth - box.width * 0.04,
-      maxHeight: Math.max(0, box.y + box.height - sidesTop - metaSize * 2.4),
-      fontSize: scaled(rc, box.width * 0.024),
-    });
+    const tracklistX = box.x + metaWidth + box.width * 0.04;
+    const tracklistWidth = box.width - metaWidth - box.width * 0.04;
+    const tracklistMaxHeight = Math.max(0, box.y + box.height - sidesTop - metaSize * 2.4);
+    withOverride(
+      rc,
+      'tracklist',
+      { x: tracklistX, y: sidesTop },
+      { width: tracklistWidth, height: tracklistMaxHeight },
+      () =>
+        drawSides(rc, {
+          x: tracklistX,
+          y: sidesTop,
+          width: tracklistWidth,
+          maxHeight: tracklistMaxHeight,
+          fontSize: scaled(rc, box.width * 0.024),
+        }),
+    );
   }
 
   if (spec.options.paletteStyle === 'dots' && theme.palette.length > 0) {
     const dotSize = box.width * 0.016;
-    drawPaletteDots(rc, box.x, box.y + box.height - dotSize, dotSize, dotSize * 0.6);
+    const paletteY = box.y + box.height - dotSize;
+    const totalWidth = theme.palette.length * (dotSize + dotSize * 0.6) - dotSize * 0.6;
+    withOverride(
+      rc,
+      'palette',
+      { x: box.x, y: paletteY },
+      { width: totalWidth, height: dotSize },
+      () => drawPaletteDots(rc, box.x, paletteY, dotSize, dotSize * 0.6),
+    );
   }
 
   if (spec.options.showScanCode) {
     const scanWidth = box.width * 0.22;
-    drawScanBlock(rc, {
-      x: box.x + box.width - scanWidth,
-      y: box.y + box.height - metaSize * 1.9,
-      width: scanWidth,
-      height: metaSize * 1.4,
-    });
+    const scanX = box.x + box.width - scanWidth;
+    const scanY = box.y + box.height - metaSize * 1.9;
+    withOverride(
+      rc,
+      'scanCode',
+      { x: scanX, y: scanY },
+      { width: scanWidth, height: metaSize * 1.4 },
+      () => drawScanBlock(rc, { x: scanX, y: scanY, width: scanWidth, height: metaSize * 1.4 }),
+    );
   }
 
-  ctx.save();
-  drawCustomNote(rc, box.x, box.y + box.height - metaSize * 3.4, box.width * 0.6, metaSize * 0.85);
-  ctx.restore();
+  const noteY = box.y + box.height - metaSize * 3.4;
+  withOverride(
+    rc,
+    'customNote',
+    { x: box.x, y: noteY },
+    { width: box.width * 0.6, height: metaSize * 1.6 },
+    () => drawCustomNote(rc, box.x, noteY, box.width * 0.6, metaSize * 0.85),
+  );
 }
 
 function drawSleeve(rc: RenderContext, x: number, y: number, size: number): void {

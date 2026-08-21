@@ -3,7 +3,7 @@
  * column, tracklists, headlines and the finishing passes.
  */
 
-import type { RenderContext, Track } from '@/lib/types';
+import type { ElementId, RenderContext, Track } from '@/lib/types';
 import { withAlpha } from '@/lib/color/color';
 import {
   formatAlbumDuration,
@@ -72,6 +72,52 @@ export function posterArtist(rc: RenderContext): string {
       : 'Unknown artist';
   const raw = options.artistOverride.trim() || album.artist || fallback;
   return options.uppercaseTitle ? raw.toUpperCase() : raw;
+}
+
+/**
+ * Wraps one element's draw calls so advanced-mode's `layoutOverrides` can
+ * move and resize it without every template needing its own absolute-
+ * positioning logic. `anchor` is the point the element is naturally drawn
+ * from (its own x/y, exactly as already passed to the wrapped draw calls);
+ * scale is anchored there too, so resizing grows/shrinks the element in
+ * place instead of around the canvas origin. With no override set for `id`
+ * this is a no-op wrapper — the element renders exactly as it always did.
+ *
+ * `size` only feeds the layout registry (used by the editor's drag/select
+ * overlay for hit-testing), never the actual drawing — an approximate
+ * width/height is fine; it does not need to match the rendered content
+ * exactly.
+ */
+export function withOverride<T>(
+  rc: RenderContext,
+  id: ElementId,
+  anchor: { x: number; y: number },
+  size: { width: number; height: number },
+  draw: () => T,
+): T {
+  const override = rc.spec.options.layoutOverrides[id];
+  const dx = override?.dx ?? 0;
+  const dy = override?.dy ?? 0;
+  const scale = override?.scale ?? 1;
+
+  const { ctx } = rc;
+  ctx.save();
+  if (dx !== 0 || dy !== 0 || scale !== 1) {
+    ctx.translate(anchor.x + dx, anchor.y + dy);
+    ctx.scale(scale, scale);
+    ctx.translate(-anchor.x, -anchor.y);
+  }
+  const result = draw();
+  ctx.restore();
+
+  rc.layout.set(id, {
+    x: anchor.x + dx,
+    y: anchor.y + dy,
+    width: Math.max(0, size.width) * scale,
+    height: Math.max(0, size.height) * scale,
+  });
+
+  return result;
 }
 
 export function contentBox(rc: RenderContext) {

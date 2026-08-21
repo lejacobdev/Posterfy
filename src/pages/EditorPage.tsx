@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { Album } from '@/lib/types';
+import type { Album, ElementId, LayoutBox } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
 import { listRecent, type RecentPoster } from '@/lib/store/recent';
 import { designHeight } from '@/lib/poster/formats';
@@ -23,14 +23,18 @@ import { AlbumSearch } from '@/components/search/AlbumSearch';
 import { DesignPanel } from '@/components/editor/DesignPanel';
 import { ContentPanel } from '@/components/editor/ContentPanel';
 import { ExportPanel } from '@/components/editor/ExportPanel';
+import { AdvancedPanel } from '@/components/editor/AdvancedPanel';
+import { elementLabel } from '@/components/editor/elementLabels';
+import { LayoutOverlay } from '@/components/editor/LayoutOverlay';
 import '@/components/editor/editor.css';
 
-type TabId = 'album' | 'design' | 'content' | 'export';
+type TabId = 'album' | 'design' | 'content' | 'advanced' | 'export';
 
 const TABS: Array<{ id: TabId; key: string; icon: IconName }> = [
   { id: 'album', key: 'editor.tabAlbum', icon: 'music' },
   { id: 'design', key: 'editor.tabDesign', icon: 'palette' },
   { id: 'content', key: 'editor.tabContent', icon: 'list' },
+  { id: 'advanced', key: 'editor.tabAdvanced', icon: 'layout' },
   { id: 'export', key: 'editor.tabExport', icon: 'download' },
 ];
 
@@ -43,6 +47,7 @@ export default function EditorPage() {
     setAlbum,
     startDraft,
     setOption,
+    setLayoutOverride,
     canUndo,
     canRedo,
     undo,
@@ -50,6 +55,8 @@ export default function EditorPage() {
     reset,
   } = usePoster();
   const [tab, setTab] = useState<TabId>('design');
+  const [layout, setLayout] = useState<Map<ElementId, LayoutBox>>(new Map());
+  const [selectedElement, setSelectedElement] = useState<ElementId | null>(null);
   const posterRatio = useMemo(
     () => designHeight(spec.options.format) / 1000,
     [spec.options.format],
@@ -85,6 +92,10 @@ export default function EditorPage() {
     [setOption],
   );
 
+  const handleLayout = useCallback((next: Map<ElementId, LayoutBox>) => {
+    setLayout(next);
+  }, []);
+
   return (
     <>
       <Seo title={t('editor.title')} description={t('home.subtitle')} />
@@ -102,7 +113,24 @@ export default function EditorPage() {
                   // canvas never has to size itself from its own content.
                   style={{ '--poster-ratio': `1 / ${posterRatio}` } as CSSProperties}
                 >
-                  <PosterCanvas spec={spec} onPalette={handlePalette} />
+                  <PosterCanvas
+                    spec={spec}
+                    onPalette={handlePalette}
+                    onLayout={handleLayout}
+                    overlay={
+                      tab === 'advanced' ? (
+                        <LayoutOverlay
+                          layout={layout}
+                          overrides={spec.options.layoutOverrides}
+                          format={spec.options.format}
+                          selected={selectedElement}
+                          onSelect={setSelectedElement}
+                          onChange={setLayoutOverride}
+                          labelFor={(id) => elementLabel(t, id)}
+                        />
+                      ) : undefined
+                    }
+                  />
                 </div>
               </div>
 
@@ -194,6 +222,13 @@ export default function EditorPage() {
                 )}
                 {tab === 'design' && <DesignPanel />}
                 {tab === 'content' && <ContentPanel />}
+                {tab === 'advanced' && (
+                  <AdvancedPanel
+                    layout={layout}
+                    selected={selectedElement}
+                    onSelect={setSelectedElement}
+                  />
+                )}
                 {tab === 'export' && <ExportPanel />}
               </div>
             </aside>

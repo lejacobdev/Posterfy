@@ -8,6 +8,8 @@
 
 import type {
   Album,
+  ElementId,
+  LayoutBox,
   LoadedCover,
   PosterLabels,
   PosterSpec,
@@ -77,6 +79,13 @@ export interface RenderPosterArgs {
   labels?: PosterLabels;
   cover?: LoadedCover | null;
   scanImage?: LoadedCover | null;
+  /**
+   * Called once per render with where every element actually ended up (in
+   * design-grid units), for the advanced-mode drag/select overlay. Ignored
+   * by every other caller — export, thumbnails, wizard/gallery previews —
+   * so it's optional and has zero cost when omitted.
+   */
+  onLayout?: (layout: Map<ElementId, LayoutBox>) => void;
 }
 
 /** Draws `spec` into `canvas`, resizing the bitmap to `width`. */
@@ -115,12 +124,14 @@ export function renderPoster(args: RenderPosterArgs): void {
     theme: resolveTheme(spec),
     fonts: { display: '', body: '', mono: '' },
     labels,
+    layout: new Map(),
   };
 
   getTemplateRenderer(spec.options.template)(rc, locale);
   drawFinish(rc);
 
   ctx.restore();
+  args.onLayout?.(rc.layout);
 }
 
 /** Previews take the small cover; exports take the largest one available. */

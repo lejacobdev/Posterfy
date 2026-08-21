@@ -6,6 +6,8 @@ export const STORAGE_KEYS = {
   credentials: 'posterfy.spotify',
   /** Every album/playlist the user has posterised, so they can pick one back up. */
   recent: 'posterfy.recent',
+  /** User-saved design starting points, built from an edited built-in template. */
+  customTemplates: 'posterfy.customTemplates',
 } as const;
 
 function available(): boolean {

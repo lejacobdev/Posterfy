@@ -61,9 +61,47 @@ export type TemplateId = 'classic' | 'editorial' | 'minimal' | 'vinyl' | 'split'
 
 export type FormatId = 'portrait' | 'a-series' | 'square' | 'story' | 'landscape';
 
-export type FontPairId = 'mono' | 'grotesk' | 'editorial' | 'condensed';
+export type FontPairId =
+  | 'mono'
+  | 'grotesk'
+  | 'editorial'
+  | 'condensed'
+  | 'humanist'
+  | 'typewriter'
+  | 'literary'
+  | 'impact';
 
 export type PaletteStyle = 'bar' | 'dots' | 'strip' | 'none';
+
+/**
+ * Every element a template can position independently. Not every template
+ * draws every one of these (`minimal` has no `meta` column, `vinyl` has no
+ * plain `tracklist`) — an id simply never appears in a given render's layout
+ * registry when that template doesn't draw it.
+ */
+export type ElementId =
+  'cover' | 'title' | 'artist' | 'meta' | 'tracklist' | 'palette' | 'scanCode' | 'customNote';
+
+/**
+ * A user's manual adjustment to one element, in 1000-unit design-grid units
+ * — the same space templates already draw in. `dx`/`dy` nudge it from the
+ * template's own computed position (0,0 = untouched); `scale` grows/shrinks
+ * it anchored at its own top-left corner, so an override-free poster renders
+ * byte-identical to one with an empty `layoutOverrides`.
+ */
+export interface LayoutOverride {
+  dx: number;
+  dy: number;
+  scale: number;
+}
+
+/** Where an element actually ended up, in design-grid units — for hit-testing. */
+export interface LayoutBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 export interface PosterOptions {
   template: TemplateId;
@@ -106,6 +144,9 @@ export interface PosterOptions {
   tracklistColumns: 'auto' | 1 | 2 | 3;
   /** Multiplies every font size in the layout. */
   textScale: number;
+
+  /** Advanced-mode per-element position/size adjustments. Empty = untouched. */
+  layoutOverrides: Partial<Record<ElementId, LayoutOverride>>;
 }
 
 export interface PosterSpec {
@@ -143,6 +184,13 @@ export interface RenderContext {
   fonts: ResolvedFonts;
   /** Translated labels drawn on the poster itself. */
   labels: PosterLabels;
+  /**
+   * Where each element actually ended up this render, in design-grid units —
+   * populated by `withOverride()` as templates draw. Read back after
+   * `renderPoster()` returns (via its `onLayout` callback) to drive the
+   * advanced-mode drag/select overlay; irrelevant to the pixels themselves.
+   */
+  layout: Map<ElementId, LayoutBox>;
 }
 
 export interface ResolvedTheme {

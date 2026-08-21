@@ -18,6 +18,7 @@ import {
   posterArtist,
   posterTitle,
   scaled,
+  withOverride,
 } from '../blocks';
 import { drawCoverPlaceholder, drawImageBox } from '../effects';
 import { drawText, truncate } from '../text';
@@ -33,7 +34,9 @@ export function renderSplit(rc: RenderContext, locale: string): void {
   const imageHeight = landscape ? rc.height : rc.height * 0.58;
   const imageWidth = landscape ? rc.width * 0.5 : rc.width;
 
-  drawArtwork(rc, 0, 0, imageWidth, imageHeight);
+  withOverride(rc, 'cover', { x: 0, y: 0 }, { width: imageWidth, height: imageHeight }, () =>
+    drawArtwork(rc, 0, 0, imageWidth, imageHeight),
+  );
 
   // Gradient tie-in between the artwork and the information block.
   if (!landscape) {
@@ -58,7 +61,13 @@ export function renderSplit(rc: RenderContext, locale: string): void {
 
   if (spec.options.paletteStyle !== 'none' && theme.palette.length > 0) {
     const barHeight = rc.height * 0.009;
-    drawPaletteBar(rc, panelX, panelY, panelWidth, barHeight, 'horizontal');
+    withOverride(
+      rc,
+      'palette',
+      { x: panelX, y: panelY },
+      { width: panelWidth, height: barHeight },
+      () => drawPaletteBar(rc, panelX, panelY, panelWidth, barHeight, 'horizontal'),
+    );
   }
 
   const contentX = panelX + inset;
@@ -66,61 +75,100 @@ export function renderSplit(rc: RenderContext, locale: string): void {
   let cursorY = panelY + inset * 0.9;
 
   const artistSize = scaled(rc, contentWidth * 0.036);
-  ctx.save();
-  ctx.fillStyle = theme.accent;
-  ctx.textAlign = 'left';
-  drawText(ctx, posterArtist(rc), contentX, cursorY + artistSize, labelFont(rc, artistSize));
-  ctx.restore();
+  const artistY = cursorY;
+  withOverride(
+    rc,
+    'artist',
+    { x: contentX, y: artistY },
+    { width: contentWidth, height: artistSize },
+    () => {
+      ctx.save();
+      ctx.fillStyle = theme.accent;
+      ctx.textAlign = 'left';
+      drawText(ctx, posterArtist(rc), contentX, artistY + artistSize, labelFont(rc, artistSize));
+      ctx.restore();
+    },
+  );
   cursorY += artistSize * 1.9;
 
-  const title = drawHeadline(rc, posterTitle(rc), {
-    x: contentX,
-    y: cursorY,
-    width: contentWidth,
-    maxSize: scaled(rc, contentWidth * 0.11),
-    maxLines: 2,
-  });
+  const titleY = cursorY;
+  const title = withOverride(
+    rc,
+    'title',
+    { x: contentX, y: titleY },
+    { width: contentWidth, height: scaled(rc, contentWidth * 0.11) * 2 },
+    () =>
+      drawHeadline(rc, posterTitle(rc), {
+        x: contentX,
+        y: titleY,
+        width: contentWidth,
+        maxSize: scaled(rc, contentWidth * 0.11),
+        maxLines: 2,
+      }),
+  );
   cursorY += title.height + gap;
 
   const metaSize = scaled(rc, contentWidth * 0.026);
   const entries = metaEntries(rc, locale);
   if (entries.length > 0) {
-    const line = entries.map((entry) => `${entry.label}: ${entry.value}`).join('    ');
-    const font = bodyFont(rc, metaSize);
-    ctx.save();
-    ctx.textAlign = 'left';
-    ctx.fillStyle = theme.muted;
-    drawText(ctx, truncate(ctx, line, contentWidth, font), contentX, cursorY + metaSize, font);
-    ctx.restore();
+    const metaY = cursorY;
+    withOverride(
+      rc,
+      'meta',
+      { x: contentX, y: metaY },
+      { width: contentWidth, height: metaSize * 2 },
+      () => {
+        const line = entries.map((entry) => `${entry.label}: ${entry.value}`).join('    ');
+        const font = bodyFont(rc, metaSize);
+        ctx.save();
+        ctx.textAlign = 'left';
+        ctx.fillStyle = theme.muted;
+        drawText(ctx, truncate(ctx, line, contentWidth, font), contentX, metaY + metaSize, font);
+        ctx.restore();
+      },
+    );
     cursorY += metaSize * 2.2;
   }
 
   const bottomReserve = metaSize * (spec.options.showScanCode ? 3.4 : 1.6);
-  drawTracklist(rc, {
-    x: contentX,
-    y: cursorY,
-    width: contentWidth,
-    maxHeight: Math.max(0, panelY + panelHeight - cursorY - bottomReserve),
-    fontSize: scaled(rc, contentWidth * 0.027),
-    showDurations: spec.album.tracks.length <= 16,
-  });
+  const tracklistY = cursorY;
+  const tracklistMaxHeight = Math.max(0, panelY + panelHeight - cursorY - bottomReserve);
+  withOverride(
+    rc,
+    'tracklist',
+    { x: contentX, y: tracklistY },
+    { width: contentWidth, height: tracklistMaxHeight },
+    () =>
+      drawTracklist(rc, {
+        x: contentX,
+        y: tracklistY,
+        width: contentWidth,
+        maxHeight: tracklistMaxHeight,
+        fontSize: scaled(rc, contentWidth * 0.027),
+        showDurations: spec.album.tracks.length <= 16,
+      }),
+  );
 
   if (spec.options.showScanCode) {
     const scanWidth = contentWidth * 0.26;
-    drawScanBlock(rc, {
-      x: contentX + contentWidth - scanWidth,
-      y: panelY + panelHeight - inset * 0.6 - metaSize * 1.4,
-      width: scanWidth,
-      height: metaSize * 1.4,
-    });
+    const scanX = contentX + contentWidth - scanWidth;
+    const scanY = panelY + panelHeight - inset * 0.6 - metaSize * 1.4;
+    withOverride(
+      rc,
+      'scanCode',
+      { x: scanX, y: scanY },
+      { width: scanWidth, height: metaSize * 1.4 },
+      () => drawScanBlock(rc, { x: scanX, y: scanY, width: scanWidth, height: metaSize * 1.4 }),
+    );
   }
 
-  drawCustomNote(
+  const noteY = panelY + panelHeight - inset * 0.6 - metaSize;
+  withOverride(
     rc,
-    contentX,
-    panelY + panelHeight - inset * 0.6 - metaSize,
-    contentWidth * 0.6,
-    metaSize * 0.85,
+    'customNote',
+    { x: contentX, y: noteY },
+    { width: contentWidth * 0.6, height: metaSize * 1.6 },
+    () => drawCustomNote(rc, contentX, noteY, contentWidth * 0.6, metaSize * 0.85),
   );
 }
 

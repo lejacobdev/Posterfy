@@ -33,6 +33,7 @@ export const DEFAULT_OPTIONS: PosterOptions = {
   vignette: 0,
   tracklistColumns: 'auto',
   textScale: 1,
+  layoutOverrides: {},
 };
 
 export interface StylePreset {

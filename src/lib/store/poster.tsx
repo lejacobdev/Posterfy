@@ -12,7 +12,14 @@ import {
   useReducer,
   type ReactNode,
 } from 'react';
-import type { Album, PosterOptions, PosterSpec, Track } from '@/lib/types';
+import type {
+  Album,
+  ElementId,
+  LayoutOverride,
+  PosterOptions,
+  PosterSpec,
+  Track,
+} from '@/lib/types';
 import {
   applyPreset as applyPresetOptions,
   createEmptyAlbum,
@@ -21,6 +28,10 @@ import {
 } from '@/lib/poster/defaults';
 import { readStorage, STORAGE_KEYS, writeStorage } from './storage';
 import { hasRecentContent, upsertRecent } from './recent';
+import {
+  applyCustomTemplate as applyCustomTemplateOptions,
+  type CustomTemplate,
+} from './customTemplates';
 
 interface PosterState {
   album: Album;
@@ -244,6 +255,8 @@ export interface PosterContextValue {
   setOption: <K extends keyof PosterOptions>(key: K, value: PosterOptions[K]) => void;
   setOptions: (options: Partial<PosterOptions>) => void;
   applyPreset: (preset: StylePreset) => void;
+  /** Loads a saved custom template as a new design starting point. */
+  applyCustomTemplate: (template: CustomTemplate) => void;
   setTracks: (tracks: Track[]) => void;
   setCover: (coverUrl: string | null) => void;
   undo: () => void;
@@ -251,6 +264,16 @@ export interface PosterContextValue {
   reset: () => void;
   /** Replaces the whole session with a previously saved poster. */
   load: (spec: PosterSpec) => void;
+  /**
+   * Advanced mode: nudges/resizes one element. Repeated calls for the same
+   * element within the usual coalescing window (a drag gesture, most of all)
+   * collapse into a single undo step, same as a slider drag already does.
+   */
+  setLayoutOverride: (id: ElementId, override: LayoutOverride) => void;
+  /** Returns one element to the template's own computed position. */
+  resetLayoutOverride: (id: ElementId) => void;
+  /** Returns every element in the current template to its default layout. */
+  resetAllLayoutOverrides: () => void;
 }
 
 const PosterContext = createContext<PosterContextValue | null>(null);
@@ -296,12 +319,30 @@ export function PosterProvider({ children }: { children: ReactNode }) {
       setOption,
       setOptions: (options) => dispatch({ type: 'setOptions', options }),
       applyPreset: (preset) => dispatch({ type: 'applyPreset', preset }),
+      applyCustomTemplate: (template) =>
+        dispatch({
+          type: 'setOptions',
+          options: applyCustomTemplateOptions(state.options, template),
+        }),
       setTracks: (tracks) => dispatch({ type: 'setTracks', tracks }),
       setCover: (coverUrl) => dispatch({ type: 'setCover', coverUrl }),
       undo: () => dispatch({ type: 'undo' }),
       redo: () => dispatch({ type: 'redo' }),
       reset: () => dispatch({ type: 'reset' }),
       load: (spec) => dispatch({ type: 'hydrate', snapshot: spec }),
+      setLayoutOverride: (id, override) =>
+        dispatch({
+          type: 'setOption',
+          key: 'layoutOverrides',
+          value: { ...state.options.layoutOverrides, [id]: override },
+        }),
+      resetLayoutOverride: (id) => {
+        const next = { ...state.options.layoutOverrides };
+        delete next[id];
+        dispatch({ type: 'setOption', key: 'layoutOverrides', value: next });
+      },
+      resetAllLayoutOverrides: () =>
+        dispatch({ type: 'setOption', key: 'layoutOverrides', value: {} }),
     }),
     [state, setOption],
   );

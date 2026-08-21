@@ -20,6 +20,7 @@ import {
   posterArtist,
   posterTitle,
   scaled,
+  withOverride,
 } from '../blocks';
 import { drawCoverPlaceholder, drawImageBox } from '../effects';
 import { drawText, truncate } from '../text';
@@ -35,23 +36,40 @@ export function renderEditorial(rc: RenderContext, locale: string): void {
   let cursorY = box.y;
 
   // Kicker: artist name over a hairline.
-  ctx.save();
-  ctx.fillStyle = theme.accent;
-  ctx.textAlign = 'left';
-  drawText(ctx, posterArtist(rc), box.x, cursorY + kickerSize, labelFont(rc, kickerSize));
-  ctx.restore();
+  const kickerY = cursorY;
+  withOverride(
+    rc,
+    'artist',
+    { x: box.x, y: kickerY },
+    { width: box.width, height: kickerSize },
+    () => {
+      ctx.save();
+      ctx.fillStyle = theme.accent;
+      ctx.textAlign = 'left';
+      drawText(ctx, posterArtist(rc), box.x, kickerY + kickerSize, labelFont(rc, kickerSize));
+      ctx.restore();
+    },
+  );
   cursorY += kickerSize * 1.6;
   drawRule(rc, box.x, cursorY, box.width, Math.max(1, rc.width * 0.0015));
   cursorY += gap;
 
-  const headline = drawHeadline(rc, posterTitle(rc), {
-    x: box.x,
-    y: cursorY,
-    width: box.width,
-    maxSize: scaled(rc, box.width * 0.135),
-    maxLines: 2,
-    lineHeight: 1.04,
-  });
+  const headlineY = cursorY;
+  const headline = withOverride(
+    rc,
+    'title',
+    { x: box.x, y: headlineY },
+    { width: box.width, height: scaled(rc, box.width * 0.135) * 2 },
+    () =>
+      drawHeadline(rc, posterTitle(rc), {
+        x: box.x,
+        y: headlineY,
+        width: box.width,
+        maxSize: scaled(rc, box.width * 0.135),
+        maxLines: 2,
+        lineHeight: 1.04,
+      }),
+  );
   cursorY += headline.height + gap * 1.2;
 
   // Reserve the bottom block, then give whatever is left to the artwork.
@@ -64,67 +82,109 @@ export function renderEditorial(rc: RenderContext, locale: string): void {
   );
   const coverWidth = box.width;
 
-  drawArtwork(rc, box.x, cursorY, coverWidth, coverHeight);
+  const coverY = cursorY;
+  withOverride(
+    rc,
+    'cover',
+    { x: box.x, y: coverY },
+    { width: coverWidth, height: coverHeight },
+    () => drawArtwork(rc, box.x, coverY, coverWidth, coverHeight),
+  );
   cursorY += coverHeight + gap;
 
   if (rc.spec.options.paletteStyle !== 'none') {
-    drawPalette(rc, box.x, cursorY, box.width, rc.height * 0.012);
+    const paletteY = cursorY;
+    withOverride(
+      rc,
+      'palette',
+      { x: box.x, y: paletteY },
+      { width: box.width, height: rc.height * 0.012 },
+      () => drawPalette(rc, box.x, paletteY, box.width, rc.height * 0.012),
+    );
     cursorY += rc.height * 0.012 + gap * 0.8;
   }
 
   // Credits laid out horizontally, newspaper style.
   const entries = metaEntries(rc, locale);
   if (entries.length > 0) {
-    const cellWidth = box.width / entries.length;
-    ctx.save();
-    ctx.textAlign = 'left';
-    entries.forEach((entry, index) => {
-      const x = box.x + index * cellWidth;
-      ctx.fillStyle = theme.muted;
-      drawText(
-        ctx,
-        entry.label.toUpperCase(),
-        x,
-        cursorY + metaSize * 0.9,
-        labelFont(rc, metaSize * 0.8),
-      );
-      ctx.fillStyle = theme.foreground;
-      const valueFont = bodyFont(rc, metaSize * 1.15, 700);
-      drawText(
-        ctx,
-        truncate(ctx, entry.value, cellWidth * 0.94, valueFont),
-        x,
-        cursorY + metaSize * 2.4,
-        valueFont,
-      );
-    });
-    ctx.restore();
+    const metaY = cursorY;
+    withOverride(
+      rc,
+      'meta',
+      { x: box.x, y: metaY },
+      { width: box.width, height: metaSize * 3.4 },
+      () => {
+        const cellWidth = box.width / entries.length;
+        ctx.save();
+        ctx.textAlign = 'left';
+        entries.forEach((entry, index) => {
+          const x = box.x + index * cellWidth;
+          ctx.fillStyle = theme.muted;
+          drawText(
+            ctx,
+            entry.label.toUpperCase(),
+            x,
+            metaY + metaSize * 0.9,
+            labelFont(rc, metaSize * 0.8),
+          );
+          ctx.fillStyle = theme.foreground;
+          const valueFont = bodyFont(rc, metaSize * 1.15, 700);
+          drawText(
+            ctx,
+            truncate(ctx, entry.value, cellWidth * 0.94, valueFont),
+            x,
+            metaY + metaSize * 2.4,
+            valueFont,
+          );
+        });
+        ctx.restore();
+      },
+    );
     cursorY += metaSize * 3.4;
   }
 
   const scanWidth = rc.spec.options.showScanCode ? box.width * 0.22 : 0;
   const tracklistWidth = box.width - (scanWidth > 0 ? scanWidth + box.width * 0.04 : 0);
   const remaining = box.y + box.height - cursorY;
+  const tracklistY = cursorY;
+  const tracklistMaxHeight = Math.max(0, remaining - metaSize * 1.4);
 
-  drawTracklist(rc, {
-    x: box.x,
-    y: cursorY,
-    width: tracklistWidth,
-    maxHeight: Math.max(0, remaining - metaSize * 1.4),
-    fontSize: tracklistSize,
-    showDurations: rc.spec.album.tracks.length <= 14,
-  });
+  withOverride(
+    rc,
+    'tracklist',
+    { x: box.x, y: tracklistY },
+    { width: tracklistWidth, height: tracklistMaxHeight },
+    () =>
+      drawTracklist(rc, {
+        x: box.x,
+        y: tracklistY,
+        width: tracklistWidth,
+        maxHeight: tracklistMaxHeight,
+        fontSize: tracklistSize,
+        showDurations: rc.spec.album.tracks.length <= 14,
+      }),
+  );
 
   if (scanWidth > 0) {
-    drawScanBlock(rc, {
-      x: box.x + box.width - scanWidth,
-      y: box.y + box.height - metaSize * 2.6,
-      width: scanWidth,
-      height: metaSize * 1.5,
-    });
+    const scanX = box.x + box.width - scanWidth;
+    const scanY = box.y + box.height - metaSize * 2.6;
+    withOverride(
+      rc,
+      'scanCode',
+      { x: scanX, y: scanY },
+      { width: scanWidth, height: metaSize * 1.5 },
+      () => drawScanBlock(rc, { x: scanX, y: scanY, width: scanWidth, height: metaSize * 1.5 }),
+    );
   }
 
-  drawCustomNote(rc, box.x, box.y + box.height - metaSize, tracklistWidth, metaSize * 0.85);
+  const noteY = box.y + box.height - metaSize;
+  withOverride(
+    rc,
+    'customNote',
+    { x: box.x, y: noteY },
+    { width: tracklistWidth, height: metaSize * 1.6 },
+    () => drawCustomNote(rc, box.x, noteY, tracklistWidth, metaSize * 0.85),
+  );
 }
 
 function drawArtwork(rc: RenderContext, x: number, y: number, width: number, height: number): void {

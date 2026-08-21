@@ -23,6 +23,10 @@ const SPACE_MONO = "'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, Consola
 const SERIF = "ui-serif, Georgia, 'Times New Roman', Times, serif";
 const CONDENSED =
   "'Archivo', 'Arial Narrow', 'Helvetica Neue Condensed', 'Liberation Sans Narrow', sans-serif";
+const TREBUCHET = "'Trebuchet MS', Verdana, 'Segoe UI', sans-serif";
+const TYPEWRITER = "'Courier New', Courier, 'Liberation Mono', monospace";
+const GEORGIA = "Georgia, 'Times New Roman', ui-serif, Times, serif";
+const IMPACT = "Impact, Haettenschweiler, 'Arial Narrow Bold', 'Franklin Gothic Bold', sans-serif";
 
 export const FONT_PAIRS: Record<FontPairId, FontPair> = {
   mono: {
@@ -62,6 +66,46 @@ export const FONT_PAIRS: Record<FontPairId, FontPair> = {
     fonts: { display: CONDENSED, body: ARCHIVO, mono: SPACE_MONO },
     displayTracking: 0.02,
     displayWeight: 700,
+    bodyWeight: 400,
+    uppercaseDisplay: true,
+  },
+  humanist: {
+    id: 'humanist',
+    name: 'Humanist',
+    description: 'Rounded, friendly display over a clean grotesk body.',
+    fonts: { display: TREBUCHET, body: ARCHIVO, mono: SPACE_MONO },
+    displayTracking: -0.005,
+    displayWeight: 700,
+    bodyWeight: 400,
+    uppercaseDisplay: false,
+  },
+  typewriter: {
+    id: 'typewriter',
+    name: 'Typewriter',
+    description: 'Vintage press feel — every line set in the same slab mono.',
+    fonts: { display: TYPEWRITER, body: TYPEWRITER, mono: TYPEWRITER },
+    displayTracking: 0.03,
+    displayWeight: 700,
+    bodyWeight: 400,
+    uppercaseDisplay: true,
+  },
+  literary: {
+    id: 'literary',
+    name: 'Literary',
+    description: 'Fully serif, book-jacket poise from headline to fine print.',
+    fonts: { display: GEORGIA, body: GEORGIA, mono: SPACE_MONO },
+    displayTracking: -0.01,
+    displayWeight: 700,
+    bodyWeight: 400,
+    uppercaseDisplay: false,
+  },
+  impact: {
+    id: 'impact',
+    name: 'Impact',
+    description: 'Loud, condensed gig-poster type over a quiet sans body.',
+    fonts: { display: IMPACT, body: ARCHIVO, mono: SPACE_MONO },
+    displayTracking: 0.015,
+    displayWeight: 400,
     bodyWeight: 400,
     uppercaseDisplay: true,
   },
