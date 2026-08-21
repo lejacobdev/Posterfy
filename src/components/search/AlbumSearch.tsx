@@ -232,8 +232,11 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
         void loadLink();
         return;
       }
-      if (!resultsAreCurrent) return;
-      const target = results[activeIndex] ?? results[0];
+      // Enter only opens a result the user explicitly navigated to with the
+      // arrow keys. Without an active row it just closes the keyboard/leaves
+      // the live results as they are, rather than guessing at the top one.
+      if (!resultsAreCurrent || activeIndex < 0) return;
+      const target = results[activeIndex];
       if (target) void choose(target);
       return;
     }
@@ -364,6 +367,11 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
                   {result.releaseDate && ` · ${releaseYear(result.releaseDate)}`}
                   {result.totalTracks > 0 && ` · ${result.totalTracks}`}
                 </span>
+                {result.matchedTrack && (
+                  <span className="album-result__track">
+                    {t('editor.matchedTrack', { track: result.matchedTrack })}
+                  </span>
+                )}
               </span>
               {loadingId === result.id ? (
                 <span className="spinner" aria-hidden="true" />

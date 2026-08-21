@@ -287,9 +287,8 @@ function pickImage(images, preference = 'large') {
   return sorted[0]?.url ?? null;
 }
 
-function normalizeSearchResults(payload) {
-  const items = payload?.albums?.items ?? [];
-  return items.filter(Boolean).map((album) => ({
+function albumToSummary(album, matchedTrack) {
+  return {
     id: album.id,
     source: 'spotify',
     title: album.name ?? '',
@@ -301,7 +300,39 @@ function normalizeSearchResults(payload) {
     // user never sees.
     coverUrl: pickImage(album.images, 'small'),
     totalTracks: album.total_tracks ?? 0,
-  }));
+    // Set only when this album surfaced because one of its songs matched the
+    // query rather than the album itself — the UI uses it to explain the hit.
+    ...(matchedTrack ? { matchedTrack } : {}),
+  };
+}
+
+/**
+ * Merges album hits with the albums behind track hits, so searching for a
+ * song ("walk of life") finds the record it is on ("Brothers in Arms")
+ * without the user having to already know the album title. A track's album
+ * payload from `/search` is the same shape `/albums/{id}` normally supplies
+ * artwork and metadata from, so no extra request is needed to show it.
+ */
+function normalizeSearchResults(payload) {
+  const albumItems = (payload?.albums?.items ?? []).filter(Boolean);
+  const trackItems = (payload?.tracks?.items ?? []).filter(Boolean);
+
+  const seen = new Set();
+  const results = [];
+  for (const album of albumItems) {
+    if (!album.id || seen.has(album.id)) continue;
+    seen.add(album.id);
+    results.push(albumToSummary(album));
+  }
+  for (const track of trackItems) {
+    const album = track.album;
+    // Already found directly, or Spotify sent a track with no album at all
+    // (a local file placeholder) — nothing to add either way.
+    if (!album?.id || seen.has(album.id)) continue;
+    seen.add(album.id);
+    results.push(albumToSummary(album, track.name));
+  }
+  return results;
 }
 
 async function fetchAllTracks(albumId, firstPage, deadline) {
@@ -624,7 +655,9 @@ async function handleSearch(url, res) {
     try {
       const payload = await spotifyRequest(
         '/search',
-        { q: query, type: 'album', limit: Math.min(limit, spotifySearchLimit()), market },
+        // Both types in one call, so a song title finds its album without a
+        // second request: Spotify applies `limit` per type, not shared.
+        { q: query, type: 'album,track', limit: Math.min(limit, spotifySearchLimit()), market },
         deadline,
       );
       return sendJson(

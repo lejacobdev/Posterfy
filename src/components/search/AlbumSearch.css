@@ -144,6 +144,15 @@
   text-overflow: ellipsis;
 }
 
+.album-result__track {
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .album-result__go {
   color: var(--text-subtle);
   flex-shrink: 0;

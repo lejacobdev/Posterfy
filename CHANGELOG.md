@@ -8,6 +8,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Album search also matches by song title. Spotify search now asks for tracks
+  alongside albums in the same request; a song's album is added to the results
+  (deduplicated against a direct album hit) with a note showing which track
+  matched, and the fuzzy ranker scores that track title alongside the album's
+  own so it isn't dropped for scoring 0 against unrelated album text.
 - `/api/health?spotify=1` runs one real Spotify search and reports what came
   back — configured, ok, HTTP status, latency — never the credentials.
 - Search result covers load sooner: the page preconnects to Spotify's image
@@ -33,6 +38,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Enter no longer opens the first result on its own. It used to fall back to
+  the top-ranked row whenever nothing was highlighted, silently choosing an
+  album the user hadn't picked; now it only opens the row explicitly reached
+  with the arrow keys.
 - Search now actually answers from Spotify instead of MusicBrainz on ordinary
   queries. The detail added just above traced it to the real cause: this app's
   search endpoint isn't approved for Extended Quota Mode, so it 400s above 10

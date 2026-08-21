@@ -40,6 +40,8 @@ export interface AlbumSummary {
   releaseDate: string;
   coverUrl: string | null;
   totalTracks: number;
+  /** Set when this album surfaced because one of its songs matched the search, not the album title itself. */
+  matchedTrack?: string;
 }
 
 export type TemplateId = 'classic' | 'editorial' | 'minimal' | 'vinyl' | 'split' | 'duotone';

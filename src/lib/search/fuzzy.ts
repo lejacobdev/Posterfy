@@ -175,6 +175,12 @@ export interface ScoredResult<T> {
 interface Fields {
   title: string;
   artist: string;
+  /**
+   * The song title that made this album match, when it wasn't the album's own
+   * title — scored alongside it, since that's the text that actually answered
+   * the query.
+   */
+  matchedTrack?: string;
 }
 
 /**
@@ -191,13 +197,16 @@ export function scoreCandidate(query: string, fields: Fields): number {
 
   const titleTokens = tokenize(fields.title);
   const artistTokens = tokenize(fields.artist);
-  if (titleTokens.length === 0 && artistTokens.length === 0) return 0;
+  const trackTokens = tokenize(fields.matchedTrack ?? '');
+  if (titleTokens.length === 0 && artistTokens.length === 0 && trackTokens.length === 0) return 0;
 
   let titleHits = 0;
   let artistHits = 0;
 
   for (const token of queryTokens) {
-    const inTitle = fieldScore(token, titleTokens);
+    // Whichever of the album's own title or its matched song answers the
+    // query best — a track-matched album's title is often unrelated text.
+    const inTitle = Math.max(fieldScore(token, titleTokens), fieldScore(token, trackTokens));
     const inArtist = fieldScore(token, artistTokens);
     // The title carries the query; the artist confirms it.
     titleHits += inTitle;
@@ -211,10 +220,21 @@ export function scoreCandidate(query: string, fields: Fields): number {
 
   const normalizedQuery = normalize(query);
   const normalizedTitle = normalize(fields.title);
+  const normalizedTrack = normalize(fields.matchedTrack ?? '');
 
-  // "brothers in arms" typed in full, and that is exactly the record's name.
-  if (normalizedTitle === normalizedQuery) score += 0.35;
-  else if (normalizedTitle.startsWith(normalizedQuery)) score += 0.12;
+  // "brothers in arms" typed in full, and that is exactly the record's name —
+  // or, for a track match, exactly the song that put this album in the list.
+  if (
+    normalizedTitle === normalizedQuery ||
+    (normalizedTrack && normalizedTrack === normalizedQuery)
+  ) {
+    score += 0.35;
+  } else if (
+    normalizedTitle.startsWith(normalizedQuery) ||
+    (normalizedTrack && normalizedTrack.startsWith(normalizedQuery))
+  ) {
+    score += 0.12;
+  }
 
   // Words in the title that answer nothing in the query are noise: deluxe
   // editions, "(Remastered)", "The Videosingles". Counted against the title
@@ -297,7 +317,11 @@ export function rankAlbums(
   const scored: Array<ScoredResult<AlbumSummary> & { index: number }> = [];
 
   results.forEach((item, index) => {
-    const score = scoreCandidate(trimmed, { title: item.title, artist: item.artist });
+    const score = scoreCandidate(trimmed, {
+      title: item.title,
+      artist: item.artist,
+      matchedTrack: item.matchedTrack,
+    });
     if (score >= SCORE_FLOOR) scored.push({ item, score, index });
   });
 

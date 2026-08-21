@@ -104,6 +104,22 @@ describe('scoreCandidate', () => {
     expect(both).toBeGreaterThan(wrongArtist);
   });
 
+  it('scores a matched track title even when the album title is unrelated', () => {
+    // A song search surfaces the album that contains it, whose own title
+    // usually shares no words with the query at all.
+    const noTrack = scoreCandidate('walk of life', {
+      title: 'Brothers in Arms',
+      artist: 'Dire Straits',
+    });
+    const withTrack = scoreCandidate('walk of life', {
+      title: 'Brothers in Arms',
+      artist: 'Dire Straits',
+      matchedTrack: 'Walk of Life',
+    });
+    expect(noTrack).toBe(0);
+    expect(withTrack).toBeGreaterThan(0);
+  });
+
   it('reads the pair in either order', () => {
     const titleFirst = scoreCandidate('brothers in arms - dire straits', {
       title: 'Brothers in Arms',
@@ -233,5 +249,17 @@ describe('rankAlbums', () => {
 
   it('returns nothing for no results', () => {
     expect(rankAlbums('anything', [])).toEqual([]);
+  });
+
+  it('keeps a song match even under strict mode, where nothing else would save it', () => {
+    // Strict mode returns [] rather than falling back to provider order, so
+    // this only passes if the track match itself clears the score floor —
+    // not because of the "show something anyway" safety net.
+    const ranked = rankAlbums(
+      'walk of life',
+      [album('Brothers in Arms', 'Dire Straits', { matchedTrack: 'Walk of Life' })],
+      { strict: true },
+    );
+    expect(ranked).toHaveLength(1);
   });
 });

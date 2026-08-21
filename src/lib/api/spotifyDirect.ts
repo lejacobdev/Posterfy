@@ -131,6 +131,7 @@ interface SpotifyTrackPayload {
   track_number?: number;
   disc_number?: number;
   explicit?: boolean;
+  album?: SpotifyAlbumPayload;
 }
 
 /** Spotify ships three sizes per album: roughly 640, 300 and 64 pixels wide. */
@@ -153,17 +154,8 @@ function artistNames(album: SpotifyAlbumPayload): string {
     .join(', ');
 }
 
-export async function searchAlbumsDirect(
-  query: string,
-  options: RequestOptions & { limit?: number; market?: string } = {},
-): Promise<AlbumSummary[]> {
-  const data = await request<{ albums?: { items?: SpotifyAlbumPayload[] } }>(
-    '/search',
-    { q: query, type: 'album', limit: options.limit ?? 12, market: options.market },
-    options,
-  );
-
-  return (data.albums?.items ?? []).filter(Boolean).map((album) => ({
+function albumToSummary(album: SpotifyAlbumPayload, matchedTrack?: string): AlbumSummary {
+  return {
     id: album.id,
     source: 'spotify' as const,
     title: album.name ?? '',
@@ -172,7 +164,39 @@ export async function searchAlbumsDirect(
     // Thumbnail-sized, like the server route: see normalizeSearchResults.
     coverUrl: pickImage(album.images, 'small'),
     totalTracks: album.total_tracks ?? 0,
-  }));
+    ...(matchedTrack ? { matchedTrack } : {}),
+  };
+}
+
+export async function searchAlbumsDirect(
+  query: string,
+  options: RequestOptions & { limit?: number; market?: string } = {},
+): Promise<AlbumSummary[]> {
+  const data = await request<{
+    albums?: { items?: SpotifyAlbumPayload[] };
+    tracks?: { items?: SpotifyTrackPayload[] };
+  }>(
+    '/search',
+    // Both types in one call, so a song title finds its album too — Spotify
+    // applies `limit` per type, not shared across them.
+    { q: query, type: 'album,track', limit: options.limit ?? 12, market: options.market },
+    options,
+  );
+
+  const seen = new Set<string>();
+  const results: AlbumSummary[] = [];
+  for (const album of data.albums?.items ?? []) {
+    if (!album?.id || seen.has(album.id)) continue;
+    seen.add(album.id);
+    results.push(albumToSummary(album));
+  }
+  for (const track of data.tracks?.items ?? []) {
+    const album = track?.album;
+    if (!album?.id || seen.has(album.id)) continue;
+    seen.add(album.id);
+    results.push(albumToSummary(album, track.name));
+  }
+  return results;
 }
 
 export async function getAlbumDirect(

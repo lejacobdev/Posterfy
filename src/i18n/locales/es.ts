@@ -120,11 +120,12 @@ export const es: Dictionary = {
   editor: {
     title: 'Editor de pósteres',
     searchLabel: 'Buscar un álbum',
-    searchPlaceholder: 'Busca un álbum o artista…',
+    searchPlaceholder: 'Busca un álbum, artista o canción…',
     searchHint: 'Consejo: también puedes pegar un enlace de álbum de Spotify',
     searching: 'Buscando…',
     noResults: 'Sin resultados. Prueba otra grafía o añade el álbum manualmente.',
     resultsFrom: 'Resultados de',
+    matchedTrack: 'de «{track}»',
     loadingAlbum: 'Cargando álbum…',
     changeAlbum: 'Cambiar álbum',
     linkDetected: 'Enlace detectado: pulsa Intro para cargarlo',

@@ -753,6 +753,125 @@ describe('spotify resilience', () => {
   });
 });
 
+describe('track search', () => {
+  let savedId;
+  let savedSecret;
+
+  const TOKEN = { access_token: 'test-token', expires_in: 3600 };
+
+  function json(body, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  it('asks Spotify for both albums and tracks in one call', async () => {
+    let searchUrl = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) return json(TOKEN);
+        searchUrl = url;
+        return json({ albums: { items: [] }, tracks: { items: [] } });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=walk+of+life'), res);
+
+    expect(searchUrl).toContain('type=album%2Ctrack');
+    expect(json2(res).results).toEqual([]);
+  });
+
+  it("finds a song's album even when the album itself did not match directly", async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) return json(TOKEN);
+        return json({
+          albums: { items: [] },
+          tracks: {
+            items: [
+              {
+                name: 'Walk of Life',
+                album: {
+                  id: 'bia',
+                  name: 'Brothers in Arms',
+                  artists: [{ name: 'Dire Straits' }],
+                  release_date: '1985-05-13',
+                  total_tracks: 9,
+                  images: [{ url: 'https://i.scdn.co/image/tiny', width: 64 }],
+                },
+              },
+            ],
+          },
+        });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=walk+of+life'), res);
+
+    const body = json2(res);
+    expect(body.provider).toBe('spotify');
+    expect(body.results).toEqual([
+      expect.objectContaining({
+        id: 'bia',
+        title: 'Brothers in Arms',
+        matchedTrack: 'Walk of Life',
+      }),
+    ]);
+  });
+
+  it('does not list an album twice when it matched both directly and through a track', async () => {
+    const album = {
+      id: 'bia',
+      name: 'Brothers in Arms',
+      artists: [{ name: 'Dire Straits' }],
+      release_date: '1985-05-13',
+      total_tracks: 9,
+      images: [],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) return json(TOKEN);
+        return json({
+          albums: { items: [album] },
+          tracks: { items: [{ name: 'Walk of Life', album }] },
+        });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    const body = json2(res);
+    expect(body.results).toHaveLength(1);
+    // The direct album hit wins; no matchedTrack, since it was found by title.
+    expect(body.results[0].matchedTrack).toBeUndefined();
+  });
+});
+
 describe('spotify probe', () => {
   let savedId;
   let savedSecret;

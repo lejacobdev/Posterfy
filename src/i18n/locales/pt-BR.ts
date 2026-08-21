@@ -120,11 +120,12 @@ export const ptBR: Dictionary = {
   editor: {
     title: 'Editor de pôsteres',
     searchLabel: 'Encontrar um álbum',
-    searchPlaceholder: 'Busque um álbum ou artista…',
+    searchPlaceholder: 'Busque um álbum, artista ou música…',
     searchHint: 'Dica: você também pode colar um link de álbum do Spotify',
     searching: 'Buscando…',
     noResults: 'Nada encontrado. Tente outra grafia ou adicione o álbum manualmente.',
     resultsFrom: 'Resultados de',
+    matchedTrack: 'de "{track}"',
     loadingAlbum: 'Carregando álbum…',
     changeAlbum: 'Trocar álbum',
     linkDetected: 'Link de álbum detectado — aperte Enter para carregar',

@@ -218,6 +218,39 @@ describe('AlbumSearch', () => {
     await waitFor(() => expect(screen.getByRole('listbox')).toHaveTextContent(/wrong|error|fail/i));
   });
 
+  it('does not select a result on Enter unless one was navigated to', async () => {
+    // Enter used to fall back to the first row whenever nothing was
+    // highlighted, silently opening an album the user never chose.
+    const user = userEvent.setup();
+    searchAlbums.mockResolvedValue({ items: [summary('Brothers in Arms')], provider: 'spotify' });
+    const { input, onSelect } = renderSearch();
+
+    await user.type(input, 'brothers');
+    await waitFor(() => expect(screen.getByText('Brothers in Arms')).toBeInTheDocument());
+
+    await user.keyboard('{Enter}');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(getAlbum).not.toHaveBeenCalled();
+  });
+
+  it('selects the row highlighted with the arrow keys on Enter', async () => {
+    const user = userEvent.setup();
+    searchAlbums.mockResolvedValue({
+      items: [summary('Brothers in Arms', 'bia'), summary('Making Movies', 'mm')],
+      provider: 'spotify',
+    });
+    const album = { id: 'mm', title: 'Making Movies' } as Album;
+    getAlbum.mockResolvedValue(album);
+    const { input, onSelect } = renderSearch();
+
+    await user.type(input, 'dire straits');
+    await waitFor(() => expect(screen.getByText('Making Movies')).toBeInTheDocument());
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith(album));
+  });
+
   it('hands the chosen album to the caller', async () => {
     const user = userEvent.setup();
     searchAlbums.mockResolvedValue({ items: [summary('Brothers in Arms')], provider: 'spotify' });

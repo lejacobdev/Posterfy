@@ -123,11 +123,12 @@ export const en = {
   editor: {
     title: 'Poster editor',
     searchLabel: 'Find an album',
-    searchPlaceholder: 'Search an album or artist…',
+    searchPlaceholder: 'Search an album, artist or song…',
     searchHint: 'Tip: you can also paste a Spotify album link',
     searching: 'Searching…',
     noResults: 'Nothing found. Try a different spelling, or add the album manually.',
     resultsFrom: 'Results from',
+    matchedTrack: 'from "{track}"',
     loadingAlbum: 'Loading album…',
     changeAlbum: 'Change album',
     linkDetected: 'Album link detected — press Enter to load it',

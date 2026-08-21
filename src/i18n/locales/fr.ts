@@ -120,11 +120,12 @@ export const fr: Dictionary = {
   editor: {
     title: 'Éditeur d’affiches',
     searchLabel: 'Trouver un album',
-    searchPlaceholder: 'Rechercher un album ou un artiste…',
+    searchPlaceholder: 'Rechercher un album, un artiste ou un titre…',
     searchHint: 'Astuce : vous pouvez aussi coller un lien d’album Spotify',
     searching: 'Recherche…',
     noResults: 'Aucun résultat. Essayez une autre orthographe ou ajoutez l’album manuellement.',
     resultsFrom: 'Résultats de',
+    matchedTrack: 'depuis « {track} »',
     loadingAlbum: 'Chargement de l’album…',
     changeAlbum: 'Changer d’album',
     linkDetected: 'Lien d’album détecté — appuyez sur Entrée pour le charger',
