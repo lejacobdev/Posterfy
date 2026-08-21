@@ -556,7 +556,8 @@ async function musicbrainzReleaseGroupFor(title, artist, deadline) {
   try {
     const data = await musicbrainzRequest('/release-group', { query, limit: 5 }, deadline);
     groups = data['release-groups'] ?? [];
-  } catch {
+  } catch (error) {
+    console.warn('[posterfy:api] musicbrainz release-group search failed:', error?.message);
     return null;
   }
 
@@ -564,6 +565,14 @@ async function musicbrainzReleaseGroupFor(title, artist, deadline) {
     if (normaliseTitle(group.title) !== wantTitle) return false;
     if (!wantArtist) return true;
     return normaliseTitle(mbArtist(group['artist-credit'])) === wantArtist;
+  });
+  // Temporary: this enrichment has silently missed twice in live testing
+  // already (a wrong query field, then an edition suffix) — logging what
+  // actually came back is faster than guessing a third time.
+  console.warn('[posterfy:api] musicbrainz release-group lookup', {
+    query,
+    candidates: groups.map((g) => ({ title: g.title, artist: mbArtist(g['artist-credit']) })),
+    matched: match?.id ?? null,
   });
   return match?.id ?? null;
 }
