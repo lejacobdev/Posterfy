@@ -745,6 +745,34 @@ describe('spotify probe', () => {
     });
   });
 
+  it('passes the market and limit the browser sends through to Spotify', async () => {
+    // A parameterless probe cannot prove the real search works: the browser
+    // sends a market, and an unsupported one is a 400 the probe would miss.
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+    let searchUrl = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) {
+          return new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }), {
+            status: 200,
+          });
+        }
+        searchUrl = url;
+        return new Response(JSON.stringify({ albums: { items: [] } }), { status: 200 });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?spotify=1&market=DE&limit=24'), res);
+
+    expect(searchUrl).toContain('market=DE');
+    expect(searchUrl).toContain('limit=24');
+    expect(json2(res).market).toBe('DE');
+  });
+
   it('is never cached', async () => {
     delete process.env.SPOTIFY_CLIENT_ID;
     const res = mockRes();

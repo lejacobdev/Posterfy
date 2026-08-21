@@ -452,20 +452,26 @@ async function musicbrainzAlbum(releaseGroupId) {
  * more than which backend answered — but that makes a persistent Spotify
  * failure invisible without server logs. This says exactly what happened, and
  * never leaks the credentials themselves.
+ *
+ * `market` and `limit` mirror what the browser sends, because a bare probe
+ * cannot prove the real search works: an unsupported market is rejected with a
+ * 400 that a parameterless probe would never see.
  */
-async function probeSpotify() {
+async function probeSpotify({ market, limit } = {}) {
   const configured = hasSpotifyCredentials();
   if (!configured) {
     return { configured: false, ok: false, reason: 'no_credentials' };
   }
 
   const startedAt = Date.now();
+  const params = { q: 'abbey road', type: 'album', limit: limit ?? 1, market };
   try {
-    const payload = await spotifyRequest('/search', { q: 'abbey road', type: 'album', limit: 1 });
+    const payload = await spotifyRequest('/search', params);
     return {
       configured: true,
       ok: true,
       results: payload?.albums?.items?.length ?? 0,
+      market: market ?? null,
       ms: Date.now() - startedAt,
     };
   } catch (error) {
@@ -474,6 +480,7 @@ async function probeSpotify() {
       ok: false,
       reason: error?.message ?? 'unknown',
       status: error?.status ?? null,
+      market: market ?? null,
       ms: Date.now() - startedAt,
     };
   }
@@ -661,7 +668,14 @@ export async function handleApiRequest(req, res) {
         // `?spotify=1` actually calls Spotify and reports what came back, so a
         // "results from MusicBrainz" fallback can be diagnosed from a phone.
         if (url.searchParams.get('spotify')) {
-          sendJson(res, 200, await probeSpotify());
+          sendJson(
+            res,
+            200,
+            await probeSpotify({
+              market: url.searchParams.get('market') ?? undefined,
+              limit: Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 1))),
+            }),
+          );
           return true;
         }
         sendJson(res, 200, { status: 'ok', uptime: Math.round(process.uptime()) });
