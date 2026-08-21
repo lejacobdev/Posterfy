@@ -527,6 +527,69 @@ async function spotifyCoverFor(title, artist, deadline = newDeadline()) {
   };
 }
 
+/**
+ * Finds the MusicBrainz release-group behind a title/artist, the same shape
+ * of match `spotifyCoverFor` does in the other direction. Used to borrow
+ * genre and label data neither Spotify's album nor artist endpoint returns
+ * for this app — Spotify's `genres` field is consistently empty (album and
+ * artist alike) and `label` often is too, while MusicBrainz reliably carries
+ * both. Returns null rather than guessing when nothing matches confidently.
+ */
+async function musicbrainzReleaseGroupFor(title, artist, deadline) {
+  if (!title) return null;
+  const query = artist ? `release:"${title}" AND artist:"${artist}"` : `release:"${title}"`;
+  let groups;
+  try {
+    const data = await musicbrainzRequest('/release-group', { query, limit: 5 }, deadline);
+    groups = data['release-groups'] ?? [];
+  } catch {
+    return null;
+  }
+
+  const wantTitle = normaliseTitle(title);
+  const wantArtist = normaliseTitle(artist);
+  const match = groups.find((group) => {
+    if (normaliseTitle(group.title) !== wantTitle) return false;
+    if (!wantArtist) return true;
+    return normaliseTitle(mbArtist(group['artist-credit'])) === wantArtist;
+  });
+  return match?.id ?? null;
+}
+
+/** A release-group's genre tags, MusicBrainz's most-voted ones first. */
+async function musicbrainzGenresFor(releaseGroupId, deadline) {
+  try {
+    const data = await musicbrainzRequest(
+      `/release-group/${releaseGroupId}`,
+      { inc: 'genres' },
+      deadline,
+    );
+    return [...(data.genres ?? [])]
+      .sort((a, b) => (b.count ?? 0) - (a.count ?? 0))
+      .map((genre) => genre.name)
+      .filter(Boolean)
+      .slice(0, 4);
+  } catch {
+    return [];
+  }
+}
+
+/** The label named on the first release under a release-group that has one. */
+async function musicbrainzLabelFor(releaseGroupId, deadline) {
+  try {
+    const data = await musicbrainzRequest(
+      '/release',
+      { 'release-group': releaseGroupId, inc: 'labels', limit: 10 },
+      deadline,
+    );
+    const releases = data.releases ?? [];
+    const withLabel = releases.find((release) => release['label-info']?.[0]?.label?.name);
+    return withLabel?.['label-info']?.[0]?.label?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function musicbrainzSearch(query, limit, deadline = newDeadline()) {
   const data = await musicbrainzRequest(
     '/release-group',
@@ -583,6 +646,9 @@ async function musicbrainzAlbum(releaseGroupId, deadline = newDeadline()) {
 
   // One extra request per album selection, which buys consistent artwork.
   const spotifyArt = await spotifyCoverFor(title, artist, deadline);
+  const genres = hasBudget(deadline, 800)
+    ? await musicbrainzGenresFor(releaseGroupId, deadline)
+    : [];
 
   return {
     id: releaseGroupId,
@@ -593,7 +659,7 @@ async function musicbrainzAlbum(releaseGroupId, deadline = newDeadline()) {
     coverUrl: spotifyArt?.coverUrl ?? mbCoverUrl(releaseGroupId, 500),
     coverUrlHiRes: spotifyArt?.coverUrlHiRes ?? mbCoverUrl(releaseGroupId, 1200),
     tracks,
-    genres: [],
+    genres,
     label: release['label-info']?.[0]?.label?.name ?? null,
     totalDurationMs: tracks.reduce((sum, t) => sum + t.durationMs, 0),
     uri: null,
@@ -758,6 +824,28 @@ async function handleAlbum(url, res) {
       normalized = { ...normalized, genres: (artist.genres ?? []).slice(0, 4) };
     } catch {
       /* genres stay empty */
+    }
+  }
+
+  // Spotify's artist genres are frequently empty too, and `label` often is on
+  // its own — MusicBrainz reliably carries both. One more optional lookup,
+  // only attempted with enough budget left for the search plus whichever of
+  // the two are still missing.
+  if ((normalized.genres.length === 0 || !normalized.label) && hasBudget(deadline, 1600)) {
+    const releaseGroupId = await musicbrainzReleaseGroupFor(
+      normalized.title,
+      normalized.artist,
+      deadline,
+    );
+    if (releaseGroupId) {
+      if (normalized.genres.length === 0 && hasBudget(deadline, 800)) {
+        const genres = await musicbrainzGenresFor(releaseGroupId, deadline);
+        if (genres.length > 0) normalized = { ...normalized, genres };
+      }
+      if (!normalized.label && hasBudget(deadline, 800)) {
+        const label = await musicbrainzLabelFor(releaseGroupId, deadline);
+        if (label) normalized = { ...normalized, label };
+      }
     }
   }
 

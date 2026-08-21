@@ -533,6 +533,142 @@ describe('artwork resolution', () => {
   });
 });
 
+/**
+ * Spotify's `genres` field is empty on both the album and (per live testing)
+ * the artist too, and `label` is frequently null as well — a Development
+ * Mode restriction on this app's tier, not a code bug. MusicBrainz reliably
+ * carries both, so a Spotify album missing either borrows them from there.
+ */
+describe('genre and label enrichment', () => {
+  let savedId;
+  let savedSecret;
+
+  const TOKEN = { access_token: 'test-token', expires_in: 3600 };
+  const SPOTIFY_ALBUM = {
+    id: 'sp1',
+    name: 'Brothers in Arms',
+    artists: [{ id: 'artist1', name: 'Dire Straits' }],
+    release_date: '1985-05-13',
+    genres: [],
+    label: null,
+    images: [],
+    tracks: { items: [{ name: 'So Far Away', track_number: 1 }], next: null },
+  };
+
+  function json(body, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  it('backfills genres and label from MusicBrainz when Spotify has neither', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) return json(TOKEN);
+        // Spotify's own artist-genre fallback, tried first — also empty here.
+        if (url.includes('/artists/')) return json({ genres: [] });
+        if (url.includes('api.spotify.com')) return json(SPOTIFY_ALBUM);
+        if (url.includes('/release-group?')) {
+          return json({
+            'release-groups': [
+              { id: 'rg1', title: 'Brothers in Arms', 'artist-credit': [{ name: 'Dire Straits' }] },
+            ],
+          });
+        }
+        if (url.includes('/release-group/')) {
+          return json({
+            genres: [
+              { name: 'blues rock', count: 3 },
+              { name: 'rock', count: 10 },
+            ],
+          });
+        }
+        if (url.includes('/release?')) {
+          return json({ releases: [{ 'label-info': [{ label: { name: 'Vertigo' } }] }] });
+        }
+        return json({});
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/album?id=4aawyAB9vmqN3uQ7FjRGTy'), res);
+
+    const album = json2(res).album;
+    // Sorted by MusicBrainz's own vote count, not the order the mock listed them.
+    expect(album.genres).toEqual(['rock', 'blues rock']);
+    expect(album.label).toBe('Vertigo');
+  });
+
+  it('leaves Spotify data alone when it already has genres and a label', async () => {
+    let releaseGroupSearched = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) return json(TOKEN);
+        if (url.includes('/release-group?')) releaseGroupSearched = true;
+        if (url.includes('api.spotify.com')) {
+          return json({ ...SPOTIFY_ALBUM, genres: ['rock'], label: 'Vertigo' });
+        }
+        return json({});
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/album?id=4aawyAB9vmqN3uQ7FjRGTy'), res);
+
+    expect(json2(res).album).toMatchObject({ genres: ['rock'], label: 'Vertigo' });
+    // No MusicBrainz call at all when there is nothing to backfill.
+    expect(releaseGroupSearched).toBe(false);
+  });
+
+  it("adds a MusicBrainz-native album's genres, which used to be hardcoded empty", async () => {
+    const MB_ID = 'f5093c06-23e3-404f-aeaa-40f72885ee3a';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('/release-group/')) {
+          return json({ genres: [{ name: 'new wave', count: 5 }] });
+        }
+        return json({
+          releases: [
+            {
+              id: MB_ID,
+              title: 'Northern Signal',
+              'artist-credit': [{ name: 'Halden Frost' }],
+              media: [{ position: 1, tracks: [{ title: 'Long Way North', length: 200000 }] }],
+            },
+          ],
+        });
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq(`/api/album?id=${MB_ID}&source=musicbrainz`), res);
+
+    expect(json2(res).album.genres).toEqual(['new wave']);
+  });
+});
+
 describe('search artwork size', () => {
   const IMAGES = [
     { url: 'https://i.scdn.co/image/big', width: 640, height: 640 },

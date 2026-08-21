@@ -40,6 +40,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The genres and record label toggles now actually show something. Spotify's
+  `genres` field is consistently empty on this app's tier — both the album's
+  own and, per live testing, the artist's as well — and `label` is frequently
+  null too, so toggling either on drew nothing to draw. Both now fall back to
+  a MusicBrainz lookup by title and artist when Spotify came back empty,
+  which reliably carries both; a MusicBrainz-native album's genres, which
+  were hardcoded to an empty list, come from the same lookup.
 - Enter no longer opens the first result on its own. It used to fall back to
   the top-ranked row whenever nothing was highlighted, silently choosing an
   album the user hadn't picked; now it only opens the row explicitly reached
