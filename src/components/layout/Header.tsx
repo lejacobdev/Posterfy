@@ -9,7 +9,7 @@ import { Logo } from './Logo';
 import './Header.css';
 
 const NAV_ITEMS: Array<{ to: string; key: string; icon: IconName }> = [
-  { to: '/create', key: 'nav.create', icon: 'wand' },
+  { to: '/editor', key: 'nav.editor', icon: 'sliders' },
   { to: '/gallery', key: 'nav.gallery', icon: 'grid' },
   { to: '/faq', key: 'nav.faq', icon: 'info' },
   { to: '/about', key: 'nav.about', icon: 'heart' },
@@ -216,8 +216,8 @@ export function MobileTabBar() {
   const items: Array<{ to: string; key: string; icon: IconName; end?: boolean }> = [
     { to: '/', key: 'nav.home', icon: 'layout', end: true },
     { to: '/create', key: 'nav.create', icon: 'wand' },
+    { to: '/editor', key: 'nav.editor', icon: 'sliders' },
     { to: '/gallery', key: 'nav.gallery', icon: 'grid' },
-    { to: '/settings', key: 'nav.settings', icon: 'settings' },
   ];
 
   return (

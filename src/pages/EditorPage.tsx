@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import type { Album } from '@/lib/types';
 import { usePoster } from '@/lib/store/poster';
 import { designHeight } from '@/lib/poster/formats';
@@ -31,7 +32,7 @@ const TABS: Array<{ id: TabId; key: string; icon: IconName }> = [
   { id: 'export', key: 'editor.tabExport', icon: 'download' },
 ];
 
-export default function CreatePage() {
+export default function EditorPage() {
   const { t } = useI18n();
   const {
     spec,
@@ -227,6 +228,10 @@ function EmptyState({
       </p>
 
       <div className="hstack-wrap" style={{ marginTop: 'var(--space-5)' }}>
+        <Link to="/create" className="btn btn--primary">
+          <Icon name="wand" size={16} />
+          {t('wizard.openWizard')}
+        </Link>
         <button type="button" className="btn btn--outline" onClick={onManual}>
           <Icon name="edit" size={16} />
           {t('editor.emptyCta')}

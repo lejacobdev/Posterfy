@@ -32,6 +32,7 @@ export const fr: Dictionary = {
   },
   nav: {
     home: 'Accueil',
+    editor: 'Éditeur',
     create: 'Créer',
     gallery: 'Galerie',
     faq: 'FAQ',
@@ -212,6 +213,43 @@ export const fr: Dictionary = {
     zoomOut: 'Zoom arrière',
     fitToScreen: 'Ajuster à l’écran',
     previewNote: 'Aperçu — l’export est rendu en pleine résolution',
+  },
+  wizard: {
+    badge: 'Pas à pas',
+    title: 'Créer une affiche',
+    subtitle:
+      "Cinq étapes courtes, d'un disque à un fichier prêt à imprimer. Tout reste modifiable ensuite.",
+    stepOf: 'Étape {current} sur {total}',
+    stepAlbum: 'Disque',
+    stepStyle: 'Style',
+    stepFormat: 'Format',
+    stepDetails: 'Contenu',
+    stepFinish: 'Terminé',
+    albumTitle: 'Quel disque met-on sous cadre ?',
+    albumBody:
+      'Cherchez un album sur Spotify, collez un lien, ou partez d’une affiche vierge à remplir vous-même.',
+    styleTitle: 'Choisissez un style',
+    styleBody:
+      'Chacun définit le gabarit, la typographie et le traitement des couleurs. Les aperçus utilisent votre pochette.',
+    formatTitle: 'Choisissez le format',
+    formatBody:
+      'Cela fixe le rapport et les dimensions d’impression. L’export est toujours rendu en 300 DPI.',
+    detailsTitle: 'Que met-on sur l’affiche ?',
+    detailsBody:
+      'Activez ou désactivez les blocs voulus. L’éditeur permet de régler chacun dans le détail.',
+    finishTitle: 'Votre affiche est prête',
+    finishBody:
+      'Téléchargez-la telle quelle, ou ouvrez l’éditeur pour ajuster couleurs, texte, marges et morceaux.',
+    next: 'Continuer',
+    resume: 'Vous avez déjà une affiche en cours.',
+    resumeCta: 'L’ouvrir',
+    openWizard: 'Utiliser l’assistant',
+    toEditor: 'Ouvrir dans l’éditeur',
+    downloadNow: 'Télécharger',
+    finishHint:
+      'Ici vous obtenez un PNG de 2000 px. L’éditeur exporte des fichiers d’impression jusqu’à 300 DPI.',
+    untitled: 'Affiche sans titre',
+    custom: 'Personnalisé',
   },
   poster: {
     releaseDate: 'Année de sortie',

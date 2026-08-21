@@ -8,9 +8,11 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import HomePage from '@/pages/HomePage';
 
-// The editor and the content pages are split out of the initial bundle; the
-// landing page ships eagerly so the first paint needs no extra round trip.
-const CreatePage = lazy(() => import('@/pages/CreatePage'));
+// The wizard, the editor and the content pages are split out of the initial
+// bundle; the landing page ships eagerly so the first paint needs no extra
+// round trip.
+const WizardPage = lazy(() => import('@/pages/WizardPage'));
+const EditorPage = lazy(() => import('@/pages/EditorPage'));
 const GalleryPage = lazy(() => import('@/pages/GalleryPage'));
 const FaqPage = lazy(() => import('@/pages/FaqPage'));
 const AboutPage = lazy(() => import('@/pages/AboutPage'));
@@ -26,7 +28,8 @@ const router = createBrowserRouter(
       element: <AppShell />,
       children: [
         { index: true, element: <HomePage /> },
-        { path: 'create', element: <CreatePage /> },
+        { path: 'create', element: <WizardPage /> },
+        { path: 'editor', element: <EditorPage /> },
         { path: 'gallery', element: <GalleryPage /> },
         { path: 'faq', element: <FaqPage /> },
         { path: 'about', element: <AboutPage /> },

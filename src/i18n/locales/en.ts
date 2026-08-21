@@ -35,6 +35,7 @@ export const en = {
   },
   nav: {
     home: 'Home',
+    editor: 'Editor',
     create: 'Create',
     gallery: 'Gallery',
     faq: 'FAQ',
@@ -215,6 +216,43 @@ export const en = {
     zoomOut: 'Zoom out',
     fitToScreen: 'Fit to screen',
     previewNote: 'Preview — the export is rendered at full resolution',
+  },
+  wizard: {
+    badge: 'Guided setup',
+    title: 'Create a poster',
+    subtitle:
+      'Five short steps from a record to a print-ready file. Every choice is still editable afterwards.',
+    stepOf: 'Step {current} of {total}',
+    stepAlbum: 'Record',
+    stepStyle: 'Look',
+    stepFormat: 'Size',
+    stepDetails: 'Contents',
+    stepFinish: 'Finish',
+    albumTitle: 'Which record are we framing?',
+    albumBody:
+      'Search Spotify for an album, paste a link, or start from a blank poster and type the details yourself.',
+    styleTitle: 'Pick a look',
+    styleBody:
+      'Each one sets the template, the type and the colour treatment. The previews use your artwork.',
+    formatTitle: 'Choose the size',
+    formatBody:
+      'This sets the aspect ratio and the print dimensions. The export is always rendered at 300 DPI.',
+    detailsTitle: 'What goes on the poster?',
+    detailsBody:
+      'Turn the blocks you want on or off. You can fine-tune every one of these in the editor.',
+    finishTitle: 'Your poster is ready',
+    finishBody:
+      'Download it as it is, or open the editor to adjust colours, text, spacing and the tracklist.',
+    next: 'Continue',
+    resume: 'You already have a poster in progress.',
+    resumeCta: 'Open it',
+    openWizard: 'Use the guided wizard',
+    toEditor: 'Open in the editor',
+    downloadNow: 'Download now',
+    finishHint:
+      'Downloading here gives you a 2000 px PNG. The editor exports up to 300 DPI print files.',
+    untitled: 'Untitled poster',
+    custom: 'Custom',
   },
   poster: {
     releaseDate: 'Release Year',

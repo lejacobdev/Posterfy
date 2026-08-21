@@ -32,6 +32,7 @@ export const it: Dictionary = {
   },
   nav: {
     home: 'Home',
+    editor: 'Editor',
     create: 'Crea',
     gallery: 'Galleria',
     faq: 'FAQ',
@@ -212,6 +213,42 @@ export const it: Dictionary = {
     zoomOut: 'Riduci',
     fitToScreen: 'Adatta allo schermo',
     previewNote: 'Anteprima — l’export viene generato a piena risoluzione',
+  },
+  wizard: {
+    badge: 'Passo dopo passo',
+    title: 'Crea un poster',
+    subtitle:
+      'Cinque passaggi brevi, da un disco a un file pronto per la stampa. Tutto resta modificabile dopo.',
+    stepOf: 'Passaggio {current} di {total}',
+    stepAlbum: 'Disco',
+    stepStyle: 'Stile',
+    stepFormat: 'Formato',
+    stepDetails: 'Contenuti',
+    stepFinish: 'Fine',
+    albumTitle: 'Quale disco mettiamo in cornice?',
+    albumBody:
+      'Cerca un album su Spotify, incolla un link oppure parti da un poster vuoto e inserisci tu i dati.',
+    styleTitle: 'Scegli uno stile',
+    styleBody:
+      'Ognuno imposta il modello, i caratteri e il trattamento del colore. Le anteprime usano la tua copertina.',
+    formatTitle: 'Scegli il formato',
+    formatBody:
+      'Definisce le proporzioni e le misure di stampa. L’esportazione è sempre resa a 300 DPI.',
+    detailsTitle: 'Cosa finisce sul poster?',
+    detailsBody:
+      'Attiva o disattiva i blocchi che vuoi. Nell’editor puoi regolarli tutti nel dettaglio.',
+    finishTitle: 'Il tuo poster è pronto',
+    finishBody:
+      'Scaricalo così com’è, oppure apri l’editor per regolare colori, testo, margini e tracklist.',
+    next: 'Continua',
+    resume: 'Hai già un poster in lavorazione.',
+    resumeCta: 'Aprilo',
+    openWizard: 'Usa la procedura guidata',
+    toEditor: 'Apri nell’editor',
+    downloadNow: 'Scarica ora',
+    finishHint: 'Qui ottieni un PNG da 2000 px. L’editor esporta file di stampa fino a 300 DPI.',
+    untitled: 'Poster senza titolo',
+    custom: 'Personalizzato',
   },
   poster: {
     releaseDate: 'Anno di uscita',

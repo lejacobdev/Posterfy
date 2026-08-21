@@ -54,7 +54,7 @@ export default function GalleryPage() {
 
   const use = (entry: GalleryEntry) => {
     setOptions({ ...entry.spec.options, palette: [] });
-    navigate('/create');
+    navigate('/editor');
   };
 
   return (

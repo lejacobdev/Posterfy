@@ -4,6 +4,25 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Guided poster wizard at `/create`: five steps — record, look, size, contents,
+  finish — with a live preview beside the choices and per-preset previews
+  rendered from the chosen artwork. Ends with a one-tap PNG download or a
+  hand-off to the editor.
+
+### Changed
+
+- The editor moved from `/create` to `/editor`, and the header nav item is now
+  **Editor**. `/create` opens the wizard; the "Start creating" call to action
+  still points there.
+- Search results request Spotify's smallest artwork (64 px) instead of the
+  300 px image, which is what the 46 px result thumbnails actually need.
+- Poster previews and exports select their artwork through `selectCoverUrl`,
+  which falls back in both directions instead of only from hi-res to small.
+
 ## [1.0.0] — 2026-08-20
 
 First release.

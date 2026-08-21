@@ -41,6 +41,6 @@ if (!URL.createObjectURL) {
   URL.revokeObjectURL = vi.fn();
 }
 
-if (!window.scrollTo) {
-  window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
-}
+// jsdom does define scrollTo, but only as a stub that logs "Not implemented"
+// on every call, so replace it outright rather than only when it is missing.
+window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;

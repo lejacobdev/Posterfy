@@ -2,6 +2,8 @@
 
 Turn any album into a print-ready poster. Search a record, pick one of six templates, tune every detail, and download a file you can send straight to a print shop.
 
+Two ways in: `/create` walks you through it in five steps, `/editor` drops you straight into the full controls.
+
 Everything is rendered in the browser with the Canvas 2D API — no uploads, no accounts, no watermarks.
 
 ![Posterfy](public/og-image.png)
@@ -10,6 +12,7 @@ Everything is rendered in the browser with the Canvas 2D API — no uploads, no 
 
 ## Highlights
 
+- **Guided wizard** — five steps from a record to a finished poster, each with a live preview, then a hand-off to the editor or a one-tap download.
 - **Live album search** — types-as-you-go against Spotify, with MusicBrainz + Cover Art Archive as a keyless fallback, and full manual entry when neither has the record.
 - **Six real templates** — Classic, Editorial, Minimal, Vinyl, Split and Duotone. Each is a genuinely different layout, not a recolour.
 - **Deep customisation** — templates, five print formats, four type pairings, palette extracted from the artwork, per-swatch colour control, element toggles, tracklist editing, grain, vignette, margins, corner radius and text scale.
@@ -157,7 +160,7 @@ If you want Spotify search for every visitor, deploy the Node server or the Verc
 ├── public/              icons, fonts, manifest, service worker, robots, sitemap
 ├── scripts/             icon and OG image generation
 └── src/
-    ├── components/      UI, editor panels, poster canvas, 3D scenes, search
+    ├── components/      UI, wizard, editor panels, poster canvas, 3D scenes, search
     ├── hooks/           scroll reveal, scroll progress, media queries
     ├── i18n/            dictionaries and locale detection
     ├── lib/

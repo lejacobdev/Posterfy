@@ -24,6 +24,7 @@ export function Footer() {
         <nav className="site-footer__col" aria-label={t('footer.product')}>
           <h2 className="site-footer__heading">{t('footer.product')}</h2>
           <Link to="/create">{t('nav.create')}</Link>
+          <Link to="/editor">{t('nav.editor')}</Link>
           <Link to="/gallery">{t('nav.gallery')}</Link>
           <Link to="/settings">{t('nav.settings')}</Link>
         </nav>

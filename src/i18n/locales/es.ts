@@ -32,6 +32,7 @@ export const es: Dictionary = {
   },
   nav: {
     home: 'Inicio',
+    editor: 'Editor',
     create: 'Crear',
     gallery: 'Galería',
     faq: 'Preguntas',
@@ -212,6 +213,43 @@ export const es: Dictionary = {
     zoomOut: 'Alejar',
     fitToScreen: 'Ajustar a la pantalla',
     previewNote: 'Vista previa: la exportación se genera a resolución completa',
+  },
+  wizard: {
+    badge: 'Paso a paso',
+    title: 'Crear un póster',
+    subtitle:
+      'Cinco pasos breves desde un disco hasta un archivo listo para imprimir. Todo se puede editar después.',
+    stepOf: 'Paso {current} de {total}',
+    stepAlbum: 'Disco',
+    stepStyle: 'Estilo',
+    stepFormat: 'Tamaño',
+    stepDetails: 'Contenido',
+    stepFinish: 'Listo',
+    albumTitle: '¿Qué disco vamos a enmarcar?',
+    albumBody:
+      'Busca un álbum en Spotify, pega un enlace o empieza con un póster en blanco y escribe los datos.',
+    styleTitle: 'Elige un estilo',
+    styleBody:
+      'Cada uno define la plantilla, la tipografía y el tratamiento del color. Las vistas previas usan tu portada.',
+    formatTitle: 'Elige el tamaño',
+    formatBody:
+      'Define la proporción y las medidas de impresión. La exportación siempre se renderiza a 300 PPP.',
+    detailsTitle: '¿Qué aparece en el póster?',
+    detailsBody:
+      'Activa o desactiva los bloques que quieras. En el editor puedes ajustar cada uno al detalle.',
+    finishTitle: 'Tu póster está listo',
+    finishBody:
+      'Descárgalo tal cual o abre el editor para ajustar colores, texto, márgenes y lista de canciones.',
+    next: 'Continuar',
+    resume: 'Ya tienes un póster en curso.',
+    resumeCta: 'Abrirlo',
+    openWizard: 'Usar el asistente',
+    toEditor: 'Abrir en el editor',
+    downloadNow: 'Descargar ahora',
+    finishHint:
+      'Aquí obtienes un PNG de 2000 px. El editor exporta archivos de impresión de hasta 300 PPP.',
+    untitled: 'Póster sin título',
+    custom: 'Personalizado',
   },
   poster: {
     releaseDate: 'Año',

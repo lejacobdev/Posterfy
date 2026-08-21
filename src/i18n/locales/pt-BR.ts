@@ -32,6 +32,7 @@ export const ptBR: Dictionary = {
   },
   nav: {
     home: 'Início',
+    editor: 'Editor',
     create: 'Criar',
     gallery: 'Galeria',
     faq: 'Dúvidas',
@@ -212,6 +213,43 @@ export const ptBR: Dictionary = {
     zoomOut: 'Afastar',
     fitToScreen: 'Ajustar à tela',
     previewNote: 'Prévia — a exportação é gerada em resolução total',
+  },
+  wizard: {
+    badge: 'Passo a passo',
+    title: 'Criar um pôster',
+    subtitle:
+      'Cinco passos curtos, do disco ao arquivo pronto para impressão. Tudo continua editável depois.',
+    stepOf: 'Passo {current} de {total}',
+    stepAlbum: 'Disco',
+    stepStyle: 'Estilo',
+    stepFormat: 'Tamanho',
+    stepDetails: 'Conteúdo',
+    stepFinish: 'Pronto',
+    albumTitle: 'Qual disco vamos emoldurar?',
+    albumBody:
+      'Busque um álbum no Spotify, cole um link ou comece com um pôster em branco e digite os dados.',
+    styleTitle: 'Escolha um estilo',
+    styleBody:
+      'Cada um define o modelo, a tipografia e o tratamento de cor. As prévias usam a sua capa.',
+    formatTitle: 'Escolha o tamanho',
+    formatBody:
+      'Define a proporção e as medidas de impressão. A exportação é sempre renderizada em 300 DPI.',
+    detailsTitle: 'O que entra no pôster?',
+    detailsBody:
+      'Ligue ou desligue os blocos que quiser. No editor dá para ajustar cada um em detalhe.',
+    finishTitle: 'Seu pôster está pronto',
+    finishBody:
+      'Baixe do jeito que está, ou abra o editor para ajustar cores, texto, margens e a lista de faixas.',
+    next: 'Continuar',
+    resume: 'Você já tem um pôster em andamento.',
+    resumeCta: 'Abrir',
+    openWizard: 'Usar o assistente',
+    toEditor: 'Abrir no editor',
+    downloadNow: 'Baixar agora',
+    finishHint:
+      'Aqui você recebe um PNG de 2000 px. O editor exporta arquivos de impressão em até 300 DPI.',
+    untitled: 'Pôster sem título',
+    custom: 'Personalizado',
   },
   poster: {
     releaseDate: 'Ano de lançamento',

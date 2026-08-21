@@ -32,6 +32,7 @@ export const de: Dictionary = {
   },
   nav: {
     home: 'Start',
+    editor: 'Editor',
     create: 'Erstellen',
     gallery: 'Galerie',
     faq: 'FAQ',
@@ -212,6 +213,43 @@ export const de: Dictionary = {
     zoomOut: 'Verkleinern',
     fitToScreen: 'Einpassen',
     previewNote: 'Vorschau – der Export wird in voller Auflösung gerendert',
+  },
+  wizard: {
+    badge: 'Schritt für Schritt',
+    title: 'Poster erstellen',
+    subtitle:
+      'In fünf kurzen Schritten vom Album zur druckfertigen Datei. Alles lässt sich danach weiter anpassen.',
+    stepOf: 'Schritt {current} von {total}',
+    stepAlbum: 'Album',
+    stepStyle: 'Look',
+    stepFormat: 'Format',
+    stepDetails: 'Inhalte',
+    stepFinish: 'Fertig',
+    albumTitle: 'Welches Album soll es werden?',
+    albumBody:
+      'Suche ein Album auf Spotify, füge einen Link ein oder starte mit einem leeren Poster und trage alles selbst ein.',
+    styleTitle: 'Wähle einen Look',
+    styleBody:
+      'Jeder Look setzt Vorlage, Typografie und Farbwirkung. Die Vorschauen nutzen dein Cover.',
+    formatTitle: 'Wähle das Format',
+    formatBody:
+      'Das legt Seitenverhältnis und Druckmaße fest. Der Export wird immer mit 300 DPI gerendert.',
+    detailsTitle: 'Was kommt aufs Poster?',
+    detailsBody:
+      'Schalte die Blöcke an oder aus. Im Editor lässt sich jeder davon im Detail einstellen.',
+    finishTitle: 'Dein Poster ist fertig',
+    finishBody:
+      'Lade es direkt herunter oder öffne den Editor für Farben, Text, Abstände und Tracklist.',
+    next: 'Weiter',
+    resume: 'Du hast bereits ein Poster in Arbeit.',
+    resumeCta: 'Öffnen',
+    openWizard: 'Assistent verwenden',
+    toEditor: 'Im Editor öffnen',
+    downloadNow: 'Jetzt herunterladen',
+    finishHint:
+      'Hier bekommst du ein PNG mit 2000 px. Der Editor exportiert Druckdateien mit bis zu 300 DPI.',
+    untitled: 'Poster ohne Titel',
+    custom: 'Eigen',
   },
   poster: {
     releaseDate: 'Erscheinungsjahr',
