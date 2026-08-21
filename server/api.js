@@ -544,9 +544,13 @@ async function musicbrainzReleaseGroupFor(title, artist, deadline) {
   const wantTitle = normaliseTitle(title);
   if (!wantTitle) return null;
   const wantArtist = normaliseTitle(artist);
+  // `releasegroup` is the release-group's own canonical title; `release`
+  // (its more tempting-looking namesake) searches the titles of the releases
+  // filed under it instead, which for an edition-heavy group like this one
+  // rarely includes the plain, undecorated name being searched for here.
   const query = wantArtist
-    ? `release:"${wantTitle}" AND artist:"${wantArtist}"`
-    : `release:"${wantTitle}"`;
+    ? `releasegroup:"${wantTitle}" AND artist:"${wantArtist}"`
+    : `releasegroup:"${wantTitle}"`;
 
   let groups;
   try {

@@ -47,9 +47,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a MusicBrainz lookup by title and artist when Spotify came back empty,
   which reliably carries both; a MusicBrainz-native album's genres, which
   were hardcoded to an empty list, come from the same lookup. That MusicBrainz
-  search itself needed a fix once live: Spotify's title often carries an
-  edition suffix ("Abbey Road (Remastered)") no MusicBrainz release-group is
-  actually titled, so the search now strips it first.
+  search needed two fixes once live: Spotify's title often carries an edition
+  suffix ("Abbey Road (Remastered)") no MusicBrainz release-group is actually
+  titled, so the search strips it first; and the query searched `release`
+  (the titles of the individual releases filed under a group, which for an
+  edition-heavy one rarely includes the plain name) rather than
+  `releasegroup` (the group's own canonical title).
 - Enter no longer opens the first result on its own. It used to fall back to
   the top-ranked row whenever nothing was highlighted, silently choosing an
   album the user hadn't picked; now it only opens the row explicitly reached
