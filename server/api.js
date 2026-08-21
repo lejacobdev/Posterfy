@@ -557,6 +557,9 @@ async function musicbrainzReleaseGroupFor(title, artist, deadline) {
     const data = await musicbrainzRequest('/release-group', { query, limit: 5 }, deadline);
     groups = data['release-groups'] ?? [];
   } catch (error) {
+    // An optional enrichment, so a busy MusicBrainz (it enforces its own
+    // ~1 req/sec limit and answers 503 under load) just leaves genres/label
+    // as they were rather than failing the album fetch over it.
     console.warn('[posterfy:api] musicbrainz release-group search failed:', error?.message);
     return null;
   }
@@ -566,14 +569,12 @@ async function musicbrainzReleaseGroupFor(title, artist, deadline) {
     if (!wantArtist) return true;
     return normaliseTitle(mbArtist(group['artist-credit'])) === wantArtist;
   });
-  // Temporary: this enrichment has silently missed twice in live testing
-  // already (a wrong query field, then an edition suffix) — logging what
-  // actually came back is faster than guessing a third time.
-  console.warn('[posterfy:api] musicbrainz release-group lookup', {
-    query,
-    candidates: groups.map((g) => ({ title: g.title, artist: mbArtist(g['artist-credit']) })),
-    matched: match?.id ?? null,
-  });
+  if (!match) {
+    console.warn('[posterfy:api] musicbrainz release-group lookup found no confident match', {
+      query,
+      candidates: groups.map((g) => g.title),
+    });
+  }
   return match?.id ?? null;
 }
 
