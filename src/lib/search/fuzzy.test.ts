@@ -113,6 +113,34 @@ describe('scoreCandidate', () => {
   });
 });
 
+describe('noise markers', () => {
+  it('demotes a karaoke backing track below the record it imitates', () => {
+    const real = scoreCandidate('brothers in arms', {
+      title: 'Brothers in Arms',
+      artist: 'Dire Straits',
+    });
+    const karaoke = scoreCandidate('brothers in arms', {
+      title: 'Brothers In Arms : Originally Performed By Dire Straits Karaoke Verison',
+      artist: '\uCF54\uCF00',
+    });
+    expect(karaoke).toBeLessThan(real);
+  });
+
+  it('stops penalising once the user asks for karaoke', () => {
+    const fields = { title: 'Brothers In Arms (Karaoke Version)', artist: 'Some Label' };
+    expect(scoreCandidate('brothers in arms karaoke', fields)).toBeGreaterThan(
+      scoreCandidate('brothers in arms', fields),
+    );
+  });
+
+  it('leaves an ordinary record untouched', () => {
+    // The penalty must not fire on words that merely look adjacent.
+    expect(
+      scoreCandidate('in rainbows', { title: 'In Rainbows', artist: 'Radiohead' }),
+    ).toBeGreaterThan(1);
+  });
+});
+
 describe('rankAlbums', () => {
   /**
    * What production actually returned for this query, in the order it came

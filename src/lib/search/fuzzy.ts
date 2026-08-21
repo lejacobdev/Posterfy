@@ -136,6 +136,37 @@ function splitPair(query: string): [string, string] | null {
   return [match[1].trim(), match[2].trim()];
 }
 
+/**
+ * Records that answer the query textually but are not what anyone means by it.
+ * Spotify's results for "dire straits brothers in arms" include a karaoke
+ * backing track and a tribute band's covers album; word-overlap scoring rates
+ * both highly, because textually they do match.
+ *
+ * Penalties, not filters — someone who genuinely wants the karaoke version
+ * can still find it, and will have typed "karaoke", which cancels this out.
+ */
+const NOISE_MARKERS: Array<{ pattern: RegExp; penalty: number }> = [
+  // Unambiguous: no original release describes itself this way.
+  {
+    pattern:
+      /\b(originally performed by|made famous by|made popular by|in the style of|tribute to)\b/,
+    penalty: 0.5,
+  },
+  { pattern: /\b(karaoke|backing track)\b/, penalty: 0.35 },
+  { pattern: /\b(instrumental version|cover version|covers of)\b/, penalty: 0.2 },
+];
+
+function noisePenalty(normalizedTitle: string, normalizedQuery: string): number {
+  let penalty = 0;
+  for (const marker of NOISE_MARKERS) {
+    // Asking for it cancels the penalty for it.
+    if (marker.pattern.test(normalizedTitle) && !marker.pattern.test(normalizedQuery)) {
+      penalty += marker.penalty;
+    }
+  }
+  return penalty;
+}
+
 export interface ScoredResult<T> {
   item: T;
   score: number;
@@ -195,6 +226,7 @@ export function scoreCandidate(query: string, fields: Fields): number {
     if (fieldScore(token, queryTokens) < 0.5) unmatchedTitleWords += 1;
   }
   score -= Math.min(0.3, unmatchedTitleWords * 0.06);
+  score -= noisePenalty(normalizedTitle, normalizedQuery);
 
   // A query naming both halves ranks a record that satisfies both above one
   // that only matches the title.
