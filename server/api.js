@@ -537,7 +537,17 @@ async function spotifyCoverFor(title, artist, deadline = newDeadline()) {
  */
 async function musicbrainzReleaseGroupFor(title, artist, deadline) {
   if (!title) return null;
-  const query = artist ? `release:"${title}" AND artist:"${artist}"` : `release:"${title}"`;
+  // Spotify's title often carries an edition suffix — "(Remastered)", "(40th
+  // Anniversary)" — that has no counterpart in MusicBrainz's canonical title.
+  // Searching the raw string finds nothing; the normalised one (which strips
+  // parenthesised text, same as the match below) is what MusicBrainz answers.
+  const wantTitle = normaliseTitle(title);
+  if (!wantTitle) return null;
+  const wantArtist = normaliseTitle(artist);
+  const query = wantArtist
+    ? `release:"${wantTitle}" AND artist:"${wantArtist}"`
+    : `release:"${wantTitle}"`;
+
   let groups;
   try {
     const data = await musicbrainzRequest('/release-group', { query, limit: 5 }, deadline);
@@ -546,8 +556,6 @@ async function musicbrainzReleaseGroupFor(title, artist, deadline) {
     return null;
   }
 
-  const wantTitle = normaliseTitle(title);
-  const wantArtist = normaliseTitle(artist);
   const match = groups.find((group) => {
     if (normaliseTitle(group.title) !== wantTitle) return false;
     if (!wantArtist) return true;

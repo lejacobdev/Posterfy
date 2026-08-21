@@ -617,6 +617,41 @@ describe('genre and label enrichment', () => {
     expect(album.label).toBe('Vertigo');
   });
 
+  it("strips an edition suffix Spotify adds but MusicBrainz's title never had", async () => {
+    // Live-tested case: "Abbey Road (Remastered)" as a literal search phrase
+    // matches nothing in MusicBrainz, since no release-group is titled that —
+    // the suffix is Spotify's own, so it has to come off before searching.
+    let releaseGroupQuery = '';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('accounts.spotify.com')) return json(TOKEN);
+        if (url.includes('/artists/')) return json({ genres: [] });
+        if (url.includes('api.spotify.com')) {
+          return json({ ...SPOTIFY_ALBUM, name: 'Abbey Road (Remastered)' });
+        }
+        if (url.includes('/release-group?')) {
+          releaseGroupQuery = url;
+          return json({
+            'release-groups': [
+              { id: 'rg2', title: 'Abbey Road', 'artist-credit': [{ name: 'Dire Straits' }] },
+            ],
+          });
+        }
+        if (url.includes('/release-group/')) return json({ genres: [{ name: 'rock', count: 1 }] });
+        if (url.includes('/release?')) return json({ releases: [] });
+        return json({});
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/album?id=4aawyAB9vmqN3uQ7FjRGTy'), res);
+
+    expect(releaseGroupQuery).not.toContain('Remastered');
+    expect(json2(res).album.genres).toEqual(['rock']);
+  });
+
   it('leaves Spotify data alone when it already has genres and a label', async () => {
     let releaseGroupSearched = false;
     vi.stubGlobal(
