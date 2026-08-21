@@ -717,6 +717,30 @@ describe('spotify resilience', () => {
     expect(body.detail).toBe('Invalid market code');
   });
 
+  it('caps the outgoing limit even when the client asks for more', async () => {
+    // A Development Mode app without Extended Quota Mode approval gets a 400
+    // "Invalid limit" from Spotify itself above 10, even though Spotify's own
+    // docs describe 1-50 as valid — that undocumented ceiling is why every
+    // real search (which asks for 24, to rank a shorter list from) used to
+    // degrade to MusicBrainz while a limit=1 health probe stayed healthy.
+    let searchUrl = '';
+    const { fetchMock } = spotifyFetch([]);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) => {
+        const url = String(input);
+        if (url.includes('api.spotify.com')) searchUrl = url;
+        return fetchMock(input);
+      }),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers&limit=24'), res);
+
+    expect(searchUrl).toContain('limit=10');
+    expect(json2(res).provider).toBe('spotify');
+  });
+
   it('carries no reason when Spotify answered', async () => {
     const { fetchMock } = spotifyFetch([]);
     vi.stubGlobal('fetch', fetchMock);
@@ -822,7 +846,7 @@ describe('spotify probe', () => {
     });
   });
 
-  it('passes the market and limit the browser sends through to Spotify', async () => {
+  it('passes the market the browser sends through to Spotify', async () => {
     // A parameterless probe cannot prove the real search works: the browser
     // sends a market, and an unsupported one is a 400 the probe would miss.
     process.env.SPOTIFY_CLIENT_ID = 'id';
@@ -846,7 +870,11 @@ describe('spotify probe', () => {
     await handleApiRequest(mockReq('/api/health?spotify=1&market=DE&limit=24'), res);
 
     expect(searchUrl).toContain('market=DE');
-    expect(searchUrl).toContain('limit=24');
+    // Not 24: this app's search endpoint 400s above 10 (see spotifySearchLimit
+    // in api.js), so the probe caps the same way a real search does — mirroring
+    // the browser's limit here would make the probe report healthy while the
+    // real search it stands in for still fails.
+    expect(searchUrl).toContain('limit=10');
     expect(json2(res).market).toBe('DE');
   });
 

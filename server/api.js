@@ -66,6 +66,19 @@ function newDeadline() {
   return Date.now() + requestBudgetMs();
 }
 
+/**
+ * Spotify's own docs put `/v1/search`'s `limit` at 1-50, but a Development Mode
+ * app that has not been approved for Extended Quota Mode is held to a lower
+ * ceiling than that on the search endpoint specifically — this app's has been
+ * confirmed at 10: `limit=10` succeeds, `limit=11` and above (even the
+ * documented default of 20) come back `400 "Invalid limit"`. Capping what we
+ * request keeps every search answering from Spotify instead of a request for
+ * more than 10 results falling back to MusicBrainz on every single query.
+ */
+function spotifySearchLimit() {
+  return Number(process.env.SPOTIFY_SEARCH_LIMIT ?? 10);
+}
+
 /** Whether at least `minMs` remains before `deadline`. */
 function hasBudget(deadline, minMs = 600) {
   return deadline - Date.now() >= minMs;
@@ -564,7 +577,12 @@ async function probeSpotify({ market, limit } = {}) {
   }
 
   const startedAt = Date.now();
-  const params = { q: 'abbey road', type: 'album', limit: limit ?? 1, market };
+  const params = {
+    q: 'abbey road',
+    type: 'album',
+    limit: Math.min(limit ?? 1, spotifySearchLimit()),
+    market,
+  };
   try {
     const payload = await spotifyRequest('/search', params, newDeadline());
     return {
@@ -606,7 +624,7 @@ async function handleSearch(url, res) {
     try {
       const payload = await spotifyRequest(
         '/search',
-        { q: query, type: 'album', limit, market },
+        { q: query, type: 'album', limit: Math.min(limit, spotifySearchLimit()), market },
         deadline,
       );
       return sendJson(

@@ -33,6 +33,15 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Search now actually answers from Spotify instead of MusicBrainz on ordinary
+  queries. The detail added just above traced it to the real cause: this app's
+  search endpoint isn't approved for Extended Quota Mode, so it 400s above 10
+  results — even Spotify's own documented default of 20 fails — while a
+  request only asks for one result and stayed healthy. Every real search asks
+  for 24, to rank a shorter list from, so it 400'd and fell back every single
+  time; the health probe never noticed. The limit sent to Spotify is now
+  capped to what this app is actually allowed, in both the search path and the
+  probe.
 - A Spotify search failure that falls back to MusicBrainz now carries Spotify's
   own error message (`detail`), not just the HTTP status. A 400 and a 403 used
   to look identical from outside a server log — an unsupported market, a
