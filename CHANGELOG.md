@@ -8,6 +8,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `/api/health?spotify=1` runs one real Spotify search and reports what came
+  back — configured, ok, HTTP status, latency — never the credentials.
 - Search result covers load sooner: the page preconnects to Spotify's image
   CDN, so the first thumbnail costs one round trip instead of a DNS lookup, TCP
   handshake and TLS negotiation first. Cover Art Archive thumbnails route
@@ -31,6 +33,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- Album search no longer degrades to MusicBrainz over a Spotify hiccup. A
+  cached token rotated while a serverless instance stayed warm, or a single
+  Spotify 5xx, used to drop the whole search to the keyless provider; both are
+  now retried once. Other statuses (400/403/429) are still reported rather than
+  repeated, and the reason now travels in the response so a fallback can be
+  diagnosed from a browser.
 - Live search no longer paints stale results. Four races are gone: a response
   landing after the box was cleared repopulated the list; a slow response could
   overwrite a newer one; the spinner switched off when a superseded request

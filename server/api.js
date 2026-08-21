@@ -141,7 +141,23 @@ async function getSpotifyToken() {
   return cachedToken.value;
 }
 
-async function spotifyRequest(path, searchParams = {}) {
+/**
+ * Calls the Spotify API, retrying once for the two failures that a second
+ * attempt actually fixes.
+ *
+ * Without the retry either one degrades the whole search to the keyless
+ * provider, which is why search could answer from Spotify one moment and
+ * MusicBrainz the next:
+ *
+ *   401 — the cached token was rotated or revoked while this instance stayed
+ *         warm. Dropping it and asking again succeeds immediately.
+ *   5xx — Spotify itself hiccupped. A single retry costs one round trip and
+ *         saves the user a visibly worse set of results.
+ *
+ * Everything else (400, 403, 429) means a second identical call would fail
+ * the same way, so it is reported rather than repeated.
+ */
+async function spotifyRequest(path, searchParams = {}, attempt = 0) {
   const token = await getSpotifyToken();
   const url = new URL(`${SPOTIFY_API}${path}`);
   for (const [key, value] of Object.entries(searchParams)) {
@@ -154,8 +170,9 @@ async function spotifyRequest(path, searchParams = {}) {
   });
 
   if (response.status === 401) {
-    // Token was revoked early — drop it so the next call re-authenticates.
     cachedToken = { value: null, expiresAt: 0 };
+    if (attempt === 0) return spotifyRequest(path, searchParams, attempt + 1);
+    // 502, not 401: the caller is not the one who failed to authenticate.
     throw Object.assign(new Error('spotify_unauthorized'), { status: 502 });
   }
   if (response.status === 429) {
@@ -163,6 +180,9 @@ async function spotifyRequest(path, searchParams = {}) {
       status: 429,
       retryAfter: Number(response.headers.get('retry-after') ?? 5),
     });
+  }
+  if (response.status >= 500 && attempt === 0) {
+    return spotifyRequest(path, searchParams, attempt + 1);
   }
   if (!response.ok) {
     throw Object.assign(new Error('spotify_request_failed'), { status: response.status });
@@ -425,12 +445,47 @@ async function musicbrainzAlbum(releaseGroupId) {
   };
 }
 
+/**
+ * Runs one real Spotify search and reports the outcome.
+ *
+ * Search degrades to MusicBrainz silently by design — a working search matters
+ * more than which backend answered — but that makes a persistent Spotify
+ * failure invisible without server logs. This says exactly what happened, and
+ * never leaks the credentials themselves.
+ */
+async function probeSpotify() {
+  const configured = hasSpotifyCredentials();
+  if (!configured) {
+    return { configured: false, ok: false, reason: 'no_credentials' };
+  }
+
+  const startedAt = Date.now();
+  try {
+    const payload = await spotifyRequest('/search', { q: 'abbey road', type: 'album', limit: 1 });
+    return {
+      configured: true,
+      ok: true,
+      results: payload?.albums?.items?.length ?? 0,
+      ms: Date.now() - startedAt,
+    };
+  } catch (error) {
+    return {
+      configured: true,
+      ok: false,
+      reason: error?.message ?? 'unknown',
+      status: error?.status ?? null,
+      ms: Date.now() - startedAt,
+    };
+  }
+}
+
 async function handleSearch(url, res) {
   const query = (url.searchParams.get('q') ?? '').trim();
   if (query.length < 1) return sendJson(res, 400, { error: 'missing_query' });
 
   const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') ?? 12)));
   const market = url.searchParams.get('market') ?? undefined;
+  let degradedReason = null;
 
   // Spotify when it is configured, MusicBrainz otherwise. Either way the client
   // gets the same shape back and never has to know which one answered.
@@ -448,14 +503,22 @@ async function handleSearch(url, res) {
       if (error?.status === 429) throw error;
       // The status is the whole diagnosis — 401 means the credentials are
       // dead, 403 means the app is restricted — so log it, not just the name.
+      degradedReason = `${error?.message ?? 'unknown'}:${error?.status ?? '?'}`;
       console.warn(
-        `[posterfy:api] spotify search failed (${error?.message ?? 'unknown'}, status ${error?.status ?? '?'}), falling back to musicbrainz`,
+        `[posterfy:api] spotify search failed (${degradedReason}), falling back to musicbrainz`,
       );
     }
   }
 
   const results = await musicbrainzSearch(query, limit);
-  return sendJson(res, 200, { results, provider: 'musicbrainz' }, 300);
+  // `reason` travels with the response so a fallback can be diagnosed from a
+  // browser, without access to the server logs.
+  return sendJson(
+    res,
+    200,
+    { results, provider: 'musicbrainz', ...(degradedReason ? { reason: degradedReason } : {}) },
+    300,
+  );
 }
 
 const MB_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -595,6 +658,12 @@ export async function handleApiRequest(req, res) {
   try {
     switch (url.pathname) {
       case '/api/health':
+        // `?spotify=1` actually calls Spotify and reports what came back, so a
+        // "results from MusicBrainz" fallback can be diagnosed from a phone.
+        if (url.searchParams.get('spotify')) {
+          sendJson(res, 200, await probeSpotify());
+          return true;
+        }
         sendJson(res, 200, { status: 'ok', uptime: Math.round(process.uptime()) });
         return true;
 

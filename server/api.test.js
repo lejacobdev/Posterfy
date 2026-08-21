@@ -47,6 +47,9 @@ function json(res) {
   }
 }
 
+/** Alias used by suites that also define a local response builder called `json`. */
+const json2 = json;
+
 describe('routing', () => {
   it('ignores paths outside /api', async () => {
     const res = mockRes();
@@ -552,5 +555,200 @@ describe('search artwork size', () => {
 
     // The rows are 46px thumbnails; anything larger is wasted bandwidth.
     expect(json(res).results[0].coverUrl).toBe('https://i.scdn.co/image/tiny');
+  });
+});
+
+describe('spotify resilience', () => {
+  let savedId;
+  let savedSecret;
+
+  const TOKEN = { access_token: 'test-token', expires_in: 3600 };
+  const ALBUMS = {
+    albums: {
+      items: [
+        {
+          id: 'sp1',
+          name: 'Brothers in Arms',
+          artists: [{ name: 'Dire Straits' }],
+          release_date: '1985-05-13',
+          total_tracks: 9,
+          images: [{ url: 'https://i.scdn.co/image/tiny', width: 64 }],
+        },
+      ],
+    },
+  };
+
+  function json(body, status = 200) {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  /** Answers the token call, then the search calls from `searchResponses`. */
+  function spotifyFetch(searchResponses) {
+    const queue = [...searchResponses];
+    const calls = { token: 0, search: 0, musicbrainz: 0 };
+    const fetchMock = vi.fn(async (input) => {
+      const url = String(input);
+      if (url.includes('accounts.spotify.com')) {
+        calls.token += 1;
+        return json(TOKEN);
+      }
+      if (url.includes('api.spotify.com')) {
+        calls.search += 1;
+        const next = queue.shift();
+        return next ?? json(ALBUMS);
+      }
+      calls.musicbrainz += 1;
+      return json({ 'release-groups': [] });
+    });
+    return { fetchMock, calls };
+  }
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  it('re-authenticates and retries when the cached token is rejected', async () => {
+    // A token rotated while the instance stayed warm used to degrade the whole
+    // search to MusicBrainz, which is why search flipped between providers.
+    const { fetchMock, calls } = spotifyFetch([json({ error: 'expired' }, 401), json(ALBUMS)]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    const body = json2(res);
+    expect(body.provider).toBe('spotify');
+    expect(calls.search).toBe(2);
+    expect(calls.musicbrainz).toBe(0);
+  });
+
+  it('retries once when Spotify returns a server error', async () => {
+    const { fetchMock, calls } = spotifyFetch([json({}, 503), json(ALBUMS)]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    expect(json2(res).provider).toBe('spotify');
+    expect(calls.search).toBe(2);
+  });
+
+  it('does not retry a request that would fail the same way', async () => {
+    const { fetchMock, calls } = spotifyFetch([json({}, 403), json(ALBUMS)]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    expect(calls.search).toBe(1);
+    expect(json2(res).provider).toBe('musicbrainz');
+  });
+
+  it('says why it fell back, so it can be diagnosed without server logs', async () => {
+    const { fetchMock } = spotifyFetch([json({}, 403)]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    expect(json2(res).reason).toBe('spotify_request_failed:403');
+  });
+
+  it('carries no reason when Spotify answered', async () => {
+    const { fetchMock } = spotifyFetch([]);
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+
+    expect(json2(res).provider).toBe('spotify');
+    expect(json2(res).reason).toBeUndefined();
+  });
+});
+
+describe('spotify probe', () => {
+  let savedId;
+  let savedSecret;
+
+  beforeEach(() => {
+    savedId = process.env.SPOTIFY_CLIENT_ID;
+    savedSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (savedId) process.env.SPOTIFY_CLIENT_ID = savedId;
+    else delete process.env.SPOTIFY_CLIENT_ID;
+    if (savedSecret) process.env.SPOTIFY_CLIENT_SECRET = savedSecret;
+    else delete process.env.SPOTIFY_CLIENT_SECRET;
+  });
+
+  it('reports missing credentials', async () => {
+    delete process.env.SPOTIFY_CLIENT_ID;
+    delete process.env.SPOTIFY_CLIENT_SECRET;
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?spotify=1'), res);
+    expect(json2(res)).toMatchObject({ configured: false, ok: false, reason: 'no_credentials' });
+  });
+
+  it('reports a working Spotify', async () => {
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) =>
+        String(input).includes('accounts.spotify.com')
+          ? new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }), { status: 200 })
+          : new Response(JSON.stringify({ albums: { items: [{ id: 'a' }] } }), { status: 200 }),
+      ),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?spotify=1'), res);
+    expect(json2(res)).toMatchObject({ configured: true, ok: true, results: 1 });
+  });
+
+  it('reports the status when Spotify refuses', async () => {
+    process.env.SPOTIFY_CLIENT_ID = 'id';
+    process.env.SPOTIFY_CLIENT_SECRET = 'secret';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input) =>
+        String(input).includes('accounts.spotify.com')
+          ? new Response(JSON.stringify({ access_token: 't', expires_in: 3600 }), { status: 200 })
+          : new Response('{}', { status: 403 }),
+      ),
+    );
+
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?spotify=1'), res);
+    expect(json2(res)).toMatchObject({
+      configured: true,
+      ok: false,
+      reason: 'spotify_request_failed',
+      status: 403,
+    });
+  });
+
+  it('is never cached', async () => {
+    delete process.env.SPOTIFY_CLIENT_ID;
+    const res = mockRes();
+    await handleApiRequest(mockReq('/api/health?spotify=1'), res);
+    expect(res.getHeader('cache-control')).toBe('no-store');
   });
 });
