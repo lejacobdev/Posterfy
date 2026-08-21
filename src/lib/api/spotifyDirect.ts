@@ -183,18 +183,29 @@ export async function searchAlbumsDirect(
     options,
   );
 
-  const seen = new Set<string>();
+  const byId = new Map<string, AlbumSummary>();
   const results: AlbumSummary[] = [];
   for (const album of data.albums?.items ?? []) {
-    if (!album?.id || seen.has(album.id)) continue;
-    seen.add(album.id);
-    results.push(albumToSummary(album));
+    if (!album?.id || byId.has(album.id)) continue;
+    const summary = albumToSummary(album);
+    byId.set(album.id, summary);
+    results.push(summary);
   }
   for (const track of data.tracks?.items ?? []) {
     const album = track?.album;
-    if (!album?.id || seen.has(album.id)) continue;
-    seen.add(album.id);
-    results.push(albumToSummary(album, track.name));
+    if (!album?.id) continue;
+    const existing = byId.get(album.id);
+    if (existing) {
+      // Spotify's own album search can already match this record for reasons
+      // it never exposes — the matching track here is the only way to tell
+      // the client's fuzzy ranker why, so a song search doesn't drop an album
+      // Spotify itself already vouched for.
+      if (!existing.matchedTrack && track.name) existing.matchedTrack = track.name;
+      continue;
+    }
+    const summary = albumToSummary(album, track.name);
+    byId.set(album.id, summary);
+    results.push(summary);
   }
   return results;
 }

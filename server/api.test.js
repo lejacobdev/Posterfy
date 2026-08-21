@@ -841,7 +841,12 @@ describe('track search', () => {
     ]);
   });
 
-  it('does not list an album twice when it matched both directly and through a track', async () => {
+  it('backfills the matched track onto an album that also matched directly, without duplicating it', async () => {
+    // Spotify's own album search can match a record for reasons it never
+    // exposes (it appears to search track content too) — when the same
+    // record also comes back as a track hit, the track name is the only way
+    // to tell the client's fuzzy ranker why, so a song search does not drop
+    // an album Spotify itself already returned.
     const album = {
       id: 'bia',
       name: 'Brothers in Arms',
@@ -863,12 +868,11 @@ describe('track search', () => {
     );
 
     const res = mockRes();
-    await handleApiRequest(mockReq('/api/search?q=brothers'), res);
+    await handleApiRequest(mockReq('/api/search?q=walk+of+life'), res);
 
     const body = json2(res);
     expect(body.results).toHaveLength(1);
-    // The direct album hit wins; no matchedTrack, since it was found by title.
-    expect(body.results[0].matchedTrack).toBeUndefined();
+    expect(body.results[0].matchedTrack).toBe('Walk of Life');
   });
 });
 

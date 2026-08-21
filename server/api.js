@@ -317,20 +317,32 @@ function normalizeSearchResults(payload) {
   const albumItems = (payload?.albums?.items ?? []).filter(Boolean);
   const trackItems = (payload?.tracks?.items ?? []).filter(Boolean);
 
-  const seen = new Set();
+  const byId = new Map();
   const results = [];
   for (const album of albumItems) {
-    if (!album.id || seen.has(album.id)) continue;
-    seen.add(album.id);
-    results.push(albumToSummary(album));
+    if (!album.id || byId.has(album.id)) continue;
+    const summary = albumToSummary(album);
+    byId.set(album.id, summary);
+    results.push(summary);
   }
   for (const track of trackItems) {
     const album = track.album;
-    // Already found directly, or Spotify sent a track with no album at all
-    // (a local file placeholder) — nothing to add either way.
-    if (!album?.id || seen.has(album.id)) continue;
-    seen.add(album.id);
-    results.push(albumToSummary(album, track.name));
+    // A track with no album at all (a local file placeholder) — nothing to
+    // add either way.
+    if (!album?.id) continue;
+    const existing = byId.get(album.id);
+    if (existing) {
+      // Spotify's own album search can already match this record for reasons
+      // it never exposes (it appears to search track content, not just the
+      // album's own title) — the matching track sitting right here is the
+      // only way to tell the client's fuzzy ranker why, so a song search
+      // doesn't drop an album Spotify itself already vouched for.
+      if (!existing.matchedTrack && track.name) existing.matchedTrack = track.name;
+      continue;
+    }
+    const summary = albumToSummary(album, track.name);
+    byId.set(album.id, summary);
+    results.push(summary);
   }
   return results;
 }

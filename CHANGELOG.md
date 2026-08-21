@@ -10,9 +10,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Album search also matches by song title. Spotify search now asks for tracks
   alongside albums in the same request; a song's album is added to the results
-  (deduplicated against a direct album hit) with a note showing which track
-  matched, and the fuzzy ranker scores that track title alongside the album's
-  own so it isn't dropped for scoring 0 against unrelated album text.
+  with a note showing which track matched, and the fuzzy ranker scores that
+  track title alongside the album's own so it isn't dropped for scoring 0
+  against unrelated album text. An album Spotify's own album search already
+  matched — evidently by track content it never exposes — gets the same
+  track name backfilled from the track results rather than left unscoreable.
 - `/api/health?spotify=1` runs one real Spotify search and reports what came
   back — configured, ok, HTTP status, latency — never the credentials.
 - Search result covers load sooner: the page preconnects to Spotify's image
