@@ -37,6 +37,19 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
+    <!--
+      Album artwork lives on Spotify's CDN, and nothing requests it until a
+      search has already come back. Opening the connection now means the first
+      cover costs one round trip instead of a DNS lookup, a TCP handshake and a
+      TLS negotiation first — several hundred milliseconds on a phone, paid
+      before any of the (tiny) thumbnails can start downloading.
+    -->
+    <link rel="preconnect" href="https://i.scdn.co" crossorigin />
+    <link rel="dns-prefetch" href="https://i.scdn.co" />
+    <!-- Only used when Spotify is unavailable, so resolve DNS but do not hold
+         a connection open for it. -->
+    <link rel="dns-prefetch" href="https://coverartarchive.org" />
+
     <link
       rel="preload"
       href="/fonts/archivo-400800-latin.woff2"

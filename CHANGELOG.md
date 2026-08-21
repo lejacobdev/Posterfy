@@ -8,6 +8,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Search result covers load sooner: the page preconnects to Spotify's image
+  CDN, so the first thumbnail costs one round trip instead of a DNS lookup, TCP
+  handshake and TLS negotiation first. Cover Art Archive thumbnails route
+  through the image proxy, which resolves their redirect to a second host
+  server-side and lets the CDN cache the result. The first rows load eagerly
+  and carry their intrinsic size, so the list no longer reflows as they arrive.
 - Search result caching: an exact repeat answers from memory, and a shorter
   query already fetched is re-ranked to fill the list while the real response
   is in flight. The debounce dropped from 320 ms to 180 ms, and the provider

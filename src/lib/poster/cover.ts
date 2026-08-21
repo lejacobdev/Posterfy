@@ -35,6 +35,32 @@ export function proxiedUrl(url: string): string {
   return `/api/image?url=${encodeURIComponent(url)}`;
 }
 
+/** Hosts that answer fast enough to be worth going to directly. */
+const DIRECT_IMAGE_HOSTS = /(^|\.)(scdn\.co|spotifycdn\.com)$/;
+
+/**
+ * Picks how a search result's thumbnail should be fetched.
+ *
+ * Spotify's CDN is fast and already has a warm connection (see the preconnect
+ * in index.html), so those go direct.
+ *
+ * The Cover Art Archive does not: every request is a redirect to a *different*
+ * host (archive.org), so the browser pays two connection setups per thumbnail
+ * on top of a slow origin. Routing those through our own API costs no new
+ * connection, resolves the redirect server-side, and lets the CDN cache the
+ * result for everyone who searches the same record afterwards.
+ */
+export function thumbnailUrl(url: string): string {
+  if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url;
+  try {
+    if (DIRECT_IMAGE_HOSTS.test(new URL(url).hostname)) return url;
+  } catch {
+    // Not a URL we can reason about; leave it as it is.
+    return url;
+  }
+  return proxiedUrl(url);
+}
+
 async function loadThroughFetch(url: string): Promise<LoadedCover> {
   const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
   if (!response.ok) throw new Error(`Image request failed: ${response.status}`);

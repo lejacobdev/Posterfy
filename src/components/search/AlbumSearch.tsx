@@ -16,6 +16,7 @@ import {
 } from '@/lib/api/provider';
 import { rankAlbums } from '@/lib/search/fuzzy';
 import { searchCache } from '@/lib/search/cache';
+import { thumbnailUrl } from '@/lib/poster/cover';
 import { isAbortError } from '@/lib/api/client';
 import { detectMarket } from '@/i18n/detect';
 import { useI18n } from '@/i18n';
@@ -341,7 +342,17 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
             >
               <span className="album-result__art">
                 {result.coverUrl ? (
-                  <img src={result.coverUrl} alt="" loading="lazy" decoding="async" />
+                  <img
+                    src={thumbnailUrl(result.coverUrl)}
+                    alt=""
+                    // Intrinsic size, so the row never reflows when it lands.
+                    width={46}
+                    height={46}
+                    decoding="async"
+                    // The first rows are on screen the moment the list opens;
+                    // deferring them is what makes covers appear late.
+                    loading={index < 6 ? 'eager' : 'lazy'}
+                  />
                 ) : (
                   <Icon name="disc" size={20} />
                 )}
