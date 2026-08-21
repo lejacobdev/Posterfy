@@ -1,0 +1,358 @@
+.playlist-guide {
+  margin-bottom: var(--space-3);
+}
+
+.playlist-guide__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.playlist-guide__toggle:hover {
+  color: var(--text);
+}
+
+.playlist-guide__panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.playlist-guide__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 180px;
+  padding-left: 1.1em;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.playlist-guide__steps li {
+  padding-left: var(--space-1);
+}
+
+/* Mock Spotify frame ---------------------------------------------------- */
+.playlist-guide__mock {
+  flex-shrink: 0;
+}
+
+.pg-frame {
+  position: relative;
+  width: 220px;
+  height: 150px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.pg-frame__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.pg-frame__cover {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-violet));
+}
+
+.pg-frame__lines {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pg-frame__line {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+
+.pg-frame__line--title {
+  width: 75%;
+}
+
+.pg-frame__line--sub {
+  width: 45%;
+  opacity: 0.7;
+}
+
+.pg-frame__more {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 6px;
+}
+
+.pg-frame__more span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-subtle);
+}
+
+.pg-frame__menu {
+  position: absolute;
+  top: 34px;
+  right: 10px;
+  width: 150px;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-md);
+  transform-origin: top right;
+  animation: pg-menu-visibility 10s var(--ease-out) infinite;
+}
+
+.pg-frame__menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.pg-frame__menu-row svg {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+}
+
+.pg-toggle {
+  margin-left: auto;
+  width: 22px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  position: relative;
+  flex-shrink: 0;
+  animation: pg-toggle-track 10s var(--ease-spring) infinite;
+}
+
+.pg-toggle__knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pg-toggle-knob 10s var(--ease-spring) infinite;
+}
+
+.pg-frame__cursor {
+  position: absolute;
+  z-index: 2;
+  color: var(--text);
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 40%));
+  animation: pg-cursor-move 10s var(--ease-in-out) infinite;
+}
+
+.pg-frame__cursor-icon {
+  display: block;
+  animation: pg-cursor-press 10s var(--ease-out) infinite;
+}
+
+.pg-frame__toast {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--success);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  animation: pg-toast 10s var(--ease-out) infinite;
+}
+
+@keyframes pg-menu-visibility {
+  0%,
+  20% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+
+  28%,
+  90% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  97%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+}
+
+@keyframes pg-toggle-track {
+  0%,
+  45% {
+    background: var(--border-strong);
+  }
+
+  49%,
+  96% {
+    background: linear-gradient(135deg, var(--brand-500), var(--brand-violet));
+  }
+
+  100% {
+    background: var(--border-strong);
+  }
+}
+
+@keyframes pg-toggle-knob {
+  0%,
+  45% {
+    transform: translateX(0);
+  }
+
+  49%,
+  96% {
+    transform: translateX(10px);
+  }
+
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* Waypoints: idle -> the ••• menu button -> the public toggle -> copy link -> idle. */
+@keyframes pg-cursor-move {
+  0%,
+  6% {
+    top: 84%;
+    left: 40%;
+  }
+
+  18%,
+  30% {
+    top: 15%;
+    left: 84%;
+  }
+
+  40%,
+  52% {
+    top: 40%;
+    left: 58%;
+  }
+
+  64%,
+  76% {
+    top: 58%;
+    left: 58%;
+  }
+
+  92%,
+  100% {
+    top: 84%;
+    left: 40%;
+  }
+}
+
+@keyframes pg-cursor-press {
+  0%,
+  19%,
+  24%,
+  43%,
+  48%,
+  67%,
+  72%,
+  100% {
+    transform: scale(1);
+  }
+
+  21%,
+  46%,
+  70% {
+    transform: scale(0.7);
+  }
+}
+
+@keyframes pg-toast {
+  0%,
+  71% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  76%,
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  96%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-frame__cursor,
+  .pg-frame__toast {
+    display: none;
+  }
+
+  .pg-frame__menu {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .pg-toggle {
+    animation: none;
+    background: linear-gradient(135deg, var(--brand-500), var(--brand-violet));
+  }
+
+  .pg-toggle__knob {
+    animation: none;
+    transform: translateX(10px);
+  }
+}
+
+@media (max-width: 480px) {
+  .playlist-guide__panel {
+    flex-direction: column;
+  }
+
+  .pg-frame {
+    width: 100%;
+    max-width: 260px;
+  }
+}

@@ -27,6 +27,7 @@ import { releaseYear } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/misc';
 import { Icon } from '@/components/ui/Icon';
 import { SegmentedControl } from '@/components/ui/Controls';
+import { PlaylistPublicGuide } from './PlaylistPublicGuide';
 import './AlbumSearch.css';
 
 export interface AlbumSearchProps {
@@ -297,6 +298,7 @@ export function AlbumSearch({ onSelect, onManual, autoFocus, placeholder }: Albu
           ]}
         />
       )}
+      {subjectKind === 'playlist' && <PlaylistPublicGuide />}
       <div className={cn('album-search__field glass', showResults && 'is-open')}>
         <Icon name="search" size={20} className="album-search__icon" />
         <input

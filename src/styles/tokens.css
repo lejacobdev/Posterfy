@@ -8,12 +8,14 @@
 
 :root {
   /* Brand ------------------------------------------------------------- */
-  --brand-500: #7c5cff;
-  --brand-400: #9a80ff;
-  --brand-300: #b9a6ff;
-  --brand-600: #6244e0;
-  --accent-cyan: #4fd1c5;
-  --accent-pink: #ff4d9d;
+  --brand-500: #5b64e0;
+  --brand-400: #7b83e8;
+  --brand-300: #a3a9ee;
+  --brand-600: #464fc0;
+  /* Paired with brand-500 for the two-stop button/border gradient. */
+  --brand-violet: #8a5cd6;
+  --accent-cyan: #46a89e;
+  --accent-pink: #d9598e;
   --accent-amber: #ffb457;
 
   /* Surfaces (dark theme) --------------------------------------------- */
@@ -49,7 +51,7 @@
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 35%);
   --shadow-md: 0 8px 24px -8px rgb(0 0 0 / 55%);
   --shadow-lg: 0 24px 60px -20px rgb(0 0 0 / 70%);
-  --shadow-glow: 0 0 60px -12px rgb(124 92 255 / 45%);
+  --shadow-glow: 0 0 32px -10px rgb(91 100 224 / 38%);
 
   /* Radii -------------------------------------------------------------- */
   --radius-xs: 6px;
@@ -140,10 +142,11 @@
   --shadow-sm: 0 1px 2px rgb(20 20 35 / 8%);
   --shadow-md: 0 10px 30px -12px rgb(20 20 35 / 22%);
   --shadow-lg: 0 28px 70px -24px rgb(20 20 35 / 30%);
-  --shadow-glow: 0 0 60px -14px rgb(124 92 255 / 30%);
+  --shadow-glow: 0 0 32px -12px rgb(70 79 192 / 28%);
 
-  --brand-500: #6244e0;
-  --brand-400: #7c5cff;
+  --brand-500: #464fc0;
+  --brand-400: #5b64e0;
+  --brand-violet: #7c4fc4;
 
   color-scheme: light;
 }

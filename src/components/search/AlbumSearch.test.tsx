@@ -19,14 +19,18 @@ import { AlbumSearch } from './AlbumSearch';
 
 const searchAlbums = vi.hoisted(() => vi.fn());
 const getAlbum = vi.hoisted(() => vi.fn());
+const getProviderConfig = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/api/provider', () => ({
   searchAlbums,
+  searchPlaylists: vi.fn(),
   getAlbum,
   getAlbumFromLink: vi.fn(),
   looksLikeAlbumLink: () => false,
   prefetchProviders: vi.fn(),
 }));
+
+vi.mock('@/lib/api/spotify', () => ({ getProviderConfig }));
 
 function summary(title: string, id = title, artist = 'Dire Straits'): AlbumSummary {
   return {
@@ -79,6 +83,7 @@ beforeEach(() => {
   searchCache.clear();
   searchAlbums.mockReset();
   getAlbum.mockReset();
+  getProviderConfig.mockReset().mockResolvedValue({ spotify: false, imageProxy: true });
 });
 
 afterEach(() => {
@@ -286,5 +291,23 @@ describe('AlbumSearch', () => {
     pending.resolve({ items: [summary('Late Arrival')], provider: 'spotify' });
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByText('Late Arrival')).not.toBeInTheDocument();
+  });
+
+  it('shows the make-it-public guide only once playlist mode is selected', async () => {
+    getProviderConfig.mockResolvedValue({ spotify: true, imageProxy: true });
+    const user = userEvent.setup();
+    renderSearch();
+
+    expect(screen.queryByText(/see how/i)).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: /playlists/i })).toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole('radio', { name: /playlists/i }));
+
+    expect(screen.getByText(/see how/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /albums/i }));
+    expect(screen.queryByText(/see how/i)).not.toBeInTheDocument();
   });
 });

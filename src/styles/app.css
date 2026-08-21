@@ -94,7 +94,7 @@
   background: linear-gradient(
     135deg,
     color-mix(in srgb, var(--brand-500) 30%, transparent),
-    color-mix(in srgb, var(--accent-cyan) 22%, transparent)
+    color-mix(in srgb, var(--brand-violet) 22%, transparent)
   );
   color: var(--brand-300);
 }

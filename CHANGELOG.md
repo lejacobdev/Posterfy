@@ -8,6 +8,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- A "make your playlist public" explainer in playlist search: Spotify only
+  serves playlist tracks to this app for playlists set to public, so the
+  toggle now surfaces a collapsible guide — a small CSS mock of the ••• menu,
+  the public toggle and the copy-link action, plus plain-text steps for
+  screen readers and reduced-motion — rather than a screenshot that would
+  drift out of sync with Spotify's own UI.
 - Playlist posters: search toggles between Albums and Playlists (Spotify only —
   there is no keyless fallback for playlists). A chosen playlist is normalised
   server-side into the same shape an album takes, so it flows through every
@@ -48,6 +54,16 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   finish — with a live preview beside the choices and per-preset previews
   rendered from the chosen artwork. Ends with a one-tap PNG download or a
   hand-off to the editor.
+
+### Changed
+
+- Toned down the site's colour palette and gradient buttons. The brand hue
+  moved from a bright, saturated violet to a more muted indigo, the hero's
+  gradient text dropped from a three-stop rainbow to a plain two-stop fade,
+  and the background aurora blobs are now fewer, softer and slower rather
+  than a fast-drifting neon wash. The primary button now shows a thin
+  gradient ring on a dark fill at rest, with the gradient fill and glow
+  reserved for hover, instead of glowing constantly.
 
 ### Fixed
 
