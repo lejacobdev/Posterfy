@@ -19,7 +19,7 @@ import { thumbnailUrl } from '@/lib/poster/cover';
 import { cn } from '@/lib/utils/misc';
 import { Seo } from '@/components/ui/Seo';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { SegmentedControl } from '@/components/ui/Controls';
+import { PanelSection, SegmentedControl } from '@/components/ui/Controls';
 import { PosterCanvas } from '@/components/poster/PosterCanvas';
 import { AlbumSearch } from '@/components/search/AlbumSearch';
 import { DesignPanel } from '@/components/editor/DesignPanel';
@@ -30,13 +30,12 @@ import { elementLabel } from '@/components/editor/elementLabels';
 import { LayoutOverlay, type EditableText } from '@/components/editor/LayoutOverlay';
 import '@/components/editor/editor.css';
 
-type TabId = 'album' | 'design' | 'content' | 'advanced' | 'export';
+type TabId = 'album' | 'design' | 'content' | 'export';
 
 const TABS: Array<{ id: TabId; key: string; icon: IconName }> = [
   { id: 'album', key: 'editor.tabAlbum', icon: 'music' },
   { id: 'design', key: 'editor.tabDesign', icon: 'palette' },
   { id: 'content', key: 'editor.tabContent', icon: 'list' },
-  { id: 'advanced', key: 'editor.tabAdvanced', icon: 'layout' },
   { id: 'export', key: 'editor.tabExport', icon: 'download' },
 ];
 
@@ -65,27 +64,6 @@ export default function EditorPage() {
     [spec.options.format],
   );
 
-  // Easy mode hides the Advanced tab entirely rather than merely disabling
-  // it — a first-time user should never wonder what it does. Advanced mode
-  // goes the other way: Design and Content are Easy mode's own editing
-  // surface (form fields for what Advanced instead does by dragging and
-  // typing directly on the poster), so they'd just be a second, conflicting
-  // way to change the same things — hidden while Advanced is on.
-  const visibleTabs = useMemo(
-    () =>
-      TABS.filter((item) => {
-        if (item.id === 'advanced') return editorMode === 'advanced';
-        if (item.id === 'design' || item.id === 'content') return editorMode === 'easy';
-        return true;
-      }),
-    [editorMode],
-  );
-
-  useEffect(() => {
-    if (editorMode === 'easy' && tab === 'advanced') setTab('design');
-    if (editorMode === 'advanced' && (tab === 'design' || tab === 'content')) setTab('advanced');
-  }, [editorMode, tab]);
-
   // Keyboard shortcuts for undo/redo, the way a design tool should behave.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -104,7 +82,7 @@ export default function EditorPage() {
   const handleSelect = useCallback(
     (next: Album) => {
       setAlbum(next);
-      setTab(editorMode === 'advanced' ? 'advanced' : 'design');
+      if (editorMode === 'easy') setTab('design');
     },
     [setAlbum, editorMode],
   );
@@ -179,7 +157,7 @@ export default function EditorPage() {
                     onPalette={handlePalette}
                     onLayout={handleLayout}
                     overlay={
-                      tab === 'advanced' ? (
+                      editorMode === 'advanced' ? (
                         <LayoutOverlay
                           layout={layout}
                           overrides={spec.options.layoutOverrides}
@@ -243,73 +221,106 @@ export default function EditorPage() {
                 />
               </div>
 
-              <div className="editor__tabs" role="tablist">
-                {visibleTabs.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === item.id}
-                    className={cn('editor__tab', tab === item.id && 'is-active')}
-                    onClick={() => setTab(item.id)}
-                  >
-                    <Icon name={item.icon} size={16} />
-                    <span>{t(item.key)}</span>
-                  </button>
-                ))}
-              </div>
+              {editorMode === 'easy' && (
+                <div className="editor__tabs" role="tablist">
+                  {TABS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === item.id}
+                      className={cn('editor__tab', tab === item.id && 'is-active')}
+                      onClick={() => setTab(item.id)}
+                    >
+                      <Icon name={item.icon} size={16} />
+                      <span>{t(item.key)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="editor__panel-scroll">
-                {tab === 'album' && (
-                  <div
-                    className="editor-panel"
-                    style={{ gap: 'var(--space-4)', padding: 'var(--space-4) 0' }}
-                  >
-                    <AlbumSearch onSelect={handleSelect} />
-                    <div className="album-card glass">
-                      {album.coverUrl ? (
-                        <img src={album.coverUrl} alt="" className="album-card__art" />
-                      ) : (
-                        <span className="album-card__art" />
-                      )}
-                      <span className="album-card__text">
-                        <span className="album-card__title">{album.title || '—'}</span>
-                        <span className="album-card__meta">
-                          {album.artist}
-                          {album.releaseDate && ` · ${releaseYear(album.releaseDate)}`}
-                          {album.tracks.length > 0 &&
-                            ` · ${t('editor.tracksCount', { count: album.tracks.length })}`}
-                        </span>
-                      </span>
+                {editorMode === 'advanced' ? (
+                  <>
+                    <div className="editor-panel">
+                      <PanelSection title={t('editor.tabAlbum')} icon="music" defaultOpen={false}>
+                        <AlbumSummary album={album} onSelect={handleSelect} />
+                      </PanelSection>
                     </div>
-                    {album.externalUrl && (
-                      <a
-                        className="btn btn--outline btn--sm"
-                        href={album.externalUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
+
+                    <AdvancedPanel
+                      layout={layout}
+                      selected={selectedElement}
+                      onSelect={setSelectedElement}
+                    />
+
+                    <div className="editor-panel">
+                      <PanelSection
+                        title={t('editor.tabExport')}
+                        icon="download"
+                        defaultOpen={false}
                       >
-                        <Icon name="externalLink" size={15} />
-                        {album.source === 'spotify' ? 'Spotify' : 'MusicBrainz'}
-                      </a>
+                        <ExportPanel />
+                      </PanelSection>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {tab === 'album' && (
+                      <div
+                        className="editor-panel"
+                        style={{ gap: 'var(--space-4)', padding: 'var(--space-4) 0' }}
+                      >
+                        <AlbumSummary album={album} onSelect={handleSelect} />
+                      </div>
                     )}
-                  </div>
+                    {tab === 'design' && <DesignPanel />}
+                    {tab === 'content' && <ContentPanel />}
+                    {tab === 'export' && <ExportPanel />}
+                  </>
                 )}
-                {tab === 'design' && <DesignPanel />}
-                {tab === 'content' && <ContentPanel />}
-                {tab === 'advanced' && (
-                  <AdvancedPanel
-                    layout={layout}
-                    selected={selectedElement}
-                    onSelect={setSelectedElement}
-                  />
-                )}
-                {tab === 'export' && <ExportPanel />}
               </div>
             </aside>
           </div>
         )}
       </div>
+    </>
+  );
+}
+
+/** The album search plus a summary of whatever's currently loaded — shared by Easy mode's Album tab and Advanced mode's collapsed Album section. */
+function AlbumSummary({ album, onSelect }: { album: Album; onSelect: (album: Album) => void }) {
+  const { t } = useI18n();
+  return (
+    <>
+      <AlbumSearch onSelect={onSelect} />
+      <div className="album-card glass">
+        {album.coverUrl ? (
+          <img src={album.coverUrl} alt="" className="album-card__art" />
+        ) : (
+          <span className="album-card__art" />
+        )}
+        <span className="album-card__text">
+          <span className="album-card__title">{album.title || '—'}</span>
+          <span className="album-card__meta">
+            {album.artist}
+            {album.releaseDate && ` · ${releaseYear(album.releaseDate)}`}
+            {album.tracks.length > 0 &&
+              ` · ${t('editor.tracksCount', { count: album.tracks.length })}`}
+          </span>
+        </span>
+      </div>
+      {album.externalUrl && (
+        <a
+          className="btn btn--outline btn--sm"
+          href={album.externalUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+        >
+          <Icon name="externalLink" size={15} />
+          {album.source === 'spotify' ? 'Spotify' : 'MusicBrainz'}
+        </a>
+      )}
     </>
   );
 }

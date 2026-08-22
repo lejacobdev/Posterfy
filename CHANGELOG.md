@@ -12,15 +12,19 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sidebar switches between the default, simpler tab set and the fuller one
   that adds the Advanced (drag/resize) tab. The choice is remembered across
   visits and defaults to Easy for new users.
-- Advanced mode is now a self-contained editing surface: switching to it
-  hides Design and Content (their form fields would just be a second,
-  conflicting way to change what Advanced already does directly), and any
-  text element with a free-text option — title, artist, custom note — can
-  now be double-clicked (or selected and Enter pressed) to type into it
-  right on the poster, PowerPoint-style, live-updating as you type. Clicking
-  an element on the canvas and picking it from the Advanced panel's list
-  already shared one selection; this just gives that selection a second
-  thing to do besides drag and resize.
+- Advanced mode is now a single, self-contained editing surface: switching
+  to it drops the tab bar entirely (Album and Export fold into collapsed
+  sections above and below it instead) and Design/Content go away, since
+  their form fields would just be a second, conflicting way to change what
+  Advanced already does directly. Selecting an element — on the canvas or
+  in the panel's list, the same shared selection either way — now shows
+  every edit that applies to it in one place: artwork upload for the cover,
+  visibility toggles and tracklist reordering for the tracklist, palette
+  swatches for the palette, and so on, alongside the position/size nudges
+  that were already there. Any element with a free-text option — title,
+  artist, custom note — can also be double-clicked (or selected and Enter
+  pressed) to type into it right on the poster, PowerPoint-style,
+  live-updating as you type.
 - The homepage hero headline now rotates through five different taglines
   with an old-school typewriter effect — holding the fully-typed line, then
   backspacing it out and typing the next one in, complete with a blinking
