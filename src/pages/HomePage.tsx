@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { useReveal, useStaggeredReveal } from '@/hooks/useReveal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { revealSegments, useTypewriterTagline } from '@/hooks/useTypewriter';
+import { revealText, useTypewriterTagline } from '@/hooks/useTypewriter';
 import { DEMO_ALBUMS, demoAlbum } from '@/lib/demo/demoAlbums';
 import { DEFAULT_OPTIONS, STYLE_PRESETS, TEMPLATE_META } from '@/lib/poster/defaults';
 import type { PosterSpec, TemplateId } from '@/lib/types';
@@ -46,10 +46,42 @@ export default function HomePage() {
   const { tagline, count, showCaret } = useTypewriterTagline(taglines, {
     enabled: !prefersReducedMotion,
   });
-  const { leadRevealed, leadHidden, accentRevealed, accentHidden, caretAt } = useMemo(
-    () => revealSegments(tagline, count),
+  const { leadShown, spaceShown, accentShown } = useMemo(
+    () => revealText(tagline, count),
     [tagline, count],
   );
+
+  // Reserves height for the tallest tagline so the typewriter effect never
+  // shifts anything below it. An offscreen measurer (absolutely positioned,
+  // so it never contributes to the frame's own layout) holds every tagline's
+  // full text stacked normally; its tallest child's height becomes the
+  // frame's min-height. A CSS-only version of this (all taglines overlapped
+  // in one grid cell via visibility: hidden) measured correctly but the
+  // browser's own row-height resolution for that specific pattern would
+  // intermittently flicker between two heights for perfectly static content
+  // — this plain, JS-measured height doesn't have that failure mode.
+  const titleFrameRef = useRef<HTMLDivElement>(null);
+  const titleSizerRef = useRef<HTMLDivElement>(null);
+  const [titleReservedHeight, setTitleReservedHeight] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const frame = titleFrameRef.current;
+    const sizer = titleSizerRef.current;
+    if (!frame || !sizer) return undefined;
+
+    const measure = () => {
+      const tallest = Array.from(sizer.children).reduce(
+        (max, child) => Math.max(max, child.getBoundingClientRect().height),
+        0,
+      );
+      setTitleReservedHeight(tallest);
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [taglines]);
 
   const featuresRef = useStaggeredReveal<HTMLDivElement>(70);
   const stepsRef = useStaggeredReveal<HTMLOListElement>(90);
@@ -111,12 +143,16 @@ export default function HomePage() {
               <Icon name="sparkles" size={14} />
               {t('home.badge')}
             </span>
-            <div className="hero__title-frame">
-              {/* Invisible: every tagline stacked in the same grid cell, so
-                  this box is always exactly as tall as the longest one —
-                  the live headline below never resizes it, so nothing below
+            <div
+              className="hero__title-frame"
+              ref={titleFrameRef}
+              style={titleReservedHeight ? { minHeight: `${titleReservedHeight}px` } : undefined}
+            >
+              {/* Offscreen: every tagline stacked normally (not overlapping),
+                  purely to measure the tallest one's height in JS above —
+                  it never affects the frame's own layout, so nothing below
                   the hero title shifts as shorter/longer lines type in. */}
-              <div className="hero__title-sizer" aria-hidden="true">
+              <div className="hero__title-sizer" ref={titleSizerRef} aria-hidden="true">
                 {taglines.map((item, itemIndex) => (
                   <span key={itemIndex} className="hero__title hero__title-sizer-line">
                     {item.lead} <span className="gradient-text">{item.accent}</span>
@@ -125,21 +161,10 @@ export default function HomePage() {
               </div>
               <h1 className="hero__title hero__title-live">
                 <span className="hero__title-line">
-                  {leadRevealed}
-                  {caretAt === 'lead' && showCaret && (
-                    <span className="hero__caret" aria-hidden="true" />
-                  )}
-                  <span className="hero__hidden">{leadHidden}</span>{' '}
-                  {caretAt === 'space' && showCaret && (
-                    <span className="hero__caret" aria-hidden="true" />
-                  )}
-                  <span className="gradient-text">
-                    {accentRevealed}
-                    {caretAt === 'accent' && showCaret && (
-                      <span className="hero__caret" aria-hidden="true" />
-                    )}
-                    <span className="hero__hidden">{accentHidden}</span>
-                  </span>
+                  {leadShown}
+                  {spaceShown && ' '}
+                  <span className="gradient-text">{accentShown}</span>
+                  {showCaret && <span className="hero__caret" aria-hidden="true" />}
                 </span>
               </h1>
             </div>

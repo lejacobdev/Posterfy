@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { revealSegments, useTypewriterTagline } from './useTypewriter';
+import { revealText, useTypewriterTagline } from './useTypewriter';
 
 const TAGLINES = [
   { lead: 'Turn any album into a', accent: 'poster worth framing' },
@@ -97,74 +97,74 @@ describe('useTypewriterTagline', () => {
   });
 });
 
-describe('revealSegments', () => {
+describe('revealText', () => {
   const tagline = { lead: 'Turn any album into a', accent: 'poster worth framing' };
   const leadLen = tagline.lead.length; // 22
   const accentLen = tagline.accent.length; // 21
   const total = leadLen + 1 + accentLen;
 
-  it('reveals nothing at count 0, with the full text present but hidden', () => {
-    const segments = revealSegments(tagline, 0);
-    expect(segments.leadRevealed).toBe('');
-    expect(segments.leadHidden).toBe(tagline.lead);
-    expect(segments.accentRevealed).toBe('');
-    expect(segments.accentHidden).toBe(tagline.accent);
-    expect(segments.caretAt).toBe('lead');
+  it('reveals nothing at count 0', () => {
+    const revealed = revealText(tagline, 0);
+    expect(revealed.leadShown).toBe('');
+    expect(revealed.spaceShown).toBe(false);
+    expect(revealed.accentShown).toBe('');
   });
 
-  it('reveals partway through the lead, keeping the rest as a hidden (not absent) run', () => {
-    const segments = revealSegments(tagline, 4);
-    expect(segments.leadRevealed).toBe('Turn');
-    expect(segments.leadHidden).toBe(tagline.lead.slice(4));
-    // The full lead is always the concatenation of both runs — nothing is
-    // ever dropped from the DOM, only hidden, so the line never re-wraps.
-    expect(segments.leadRevealed + segments.leadHidden).toBe(tagline.lead);
-    expect(segments.accentRevealed).toBe('');
-    expect(segments.caretAt).toBe('lead');
+  it('reveals partway through the lead only', () => {
+    const revealed = revealText(tagline, 4);
+    expect(revealed.leadShown).toBe('Turn');
+    expect(revealed.spaceShown).toBe(false);
+    expect(revealed.accentShown).toBe('');
   });
 
-  it('reveals the full lead and stops at the space boundary', () => {
-    const segments = revealSegments(tagline, leadLen);
-    expect(segments.leadRevealed).toBe(tagline.lead);
-    expect(segments.leadHidden).toBe('');
-    expect(segments.accentRevealed).toBe('');
-    expect(segments.caretAt).toBe('lead');
+  it('reveals the full lead and stops before the space', () => {
+    const revealed = revealText(tagline, leadLen);
+    expect(revealed.leadShown).toBe(tagline.lead);
+    expect(revealed.spaceShown).toBe(false);
+    expect(revealed.accentShown).toBe('');
   });
 
-  it('puts the caret at the space exactly when the space is the newest reveal', () => {
-    const segments = revealSegments(tagline, leadLen + 1);
-    expect(segments.accentRevealed).toBe('');
-    expect(segments.accentHidden).toBe(tagline.accent);
-    expect(segments.caretAt).toBe('space');
+  it('reveals the space once count passes the lead', () => {
+    const revealed = revealText(tagline, leadLen + 1);
+    expect(revealed.leadShown).toBe(tagline.lead);
+    expect(revealed.spaceShown).toBe(true);
+    expect(revealed.accentShown).toBe('');
   });
 
-  it('reveals partway through the accent, keeping the rest hidden but present', () => {
-    const segments = revealSegments(tagline, leadLen + 1 + 6);
-    expect(segments.leadRevealed).toBe(tagline.lead);
-    expect(segments.accentRevealed).toBe('poster');
-    expect(segments.accentHidden).toBe(tagline.accent.slice(6));
-    expect(segments.accentRevealed + segments.accentHidden).toBe(tagline.accent);
-    expect(segments.caretAt).toBe('accent');
+  it('reveals partway through the accent', () => {
+    const revealed = revealText(tagline, leadLen + 1 + 6);
+    expect(revealed.leadShown).toBe(tagline.lead);
+    expect(revealed.spaceShown).toBe(true);
+    expect(revealed.accentShown).toBe('poster');
   });
 
   it('reveals everything at the full count', () => {
-    const segments = revealSegments(tagline, total);
-    expect(segments.leadRevealed).toBe(tagline.lead);
-    expect(segments.leadHidden).toBe('');
-    expect(segments.accentRevealed).toBe(tagline.accent);
-    expect(segments.accentHidden).toBe('');
-    expect(segments.caretAt).toBe('accent');
+    const revealed = revealText(tagline, total);
+    expect(revealed.leadShown).toBe(tagline.lead);
+    expect(revealed.spaceShown).toBe(true);
+    expect(revealed.accentShown).toBe(tagline.accent);
   });
 
   it('clamps a count past the end instead of slicing past the string', () => {
-    const segments = revealSegments(tagline, total + 50);
-    expect(segments.accentRevealed).toBe(tagline.accent);
-    expect(segments.accentHidden).toBe('');
+    const revealed = revealText(tagline, total + 50);
+    expect(revealed.accentShown).toBe(tagline.accent);
   });
 
   it('clamps a negative count to nothing revealed', () => {
-    const segments = revealSegments(tagline, -5);
-    expect(segments.leadRevealed).toBe('');
-    expect(segments.leadHidden).toBe(tagline.lead);
+    const revealed = revealText(tagline, -5);
+    expect(revealed.leadShown).toBe('');
+    expect(revealed.spaceShown).toBe(false);
+    expect(revealed.accentShown).toBe('');
+  });
+
+  it('never produces more text than the tagline actually has', () => {
+    // The concatenation of what's revealed is always a prefix of the full
+    // string — the whole point of slicing instead of splitting-and-hiding.
+    for (let count = -5; count <= total + 5; count += 1) {
+      const revealed = revealText(tagline, count);
+      const full = `${tagline.lead} ${tagline.accent}`;
+      const rendered = revealed.leadShown + (revealed.spaceShown ? ` ${revealed.accentShown}` : '');
+      expect(full.startsWith(rendered)).toBe(true);
+    }
   });
 });

@@ -32,40 +32,38 @@ function fullLength(tagline?: TypewriterTagline): number {
   return tagline.lead.length + 1 + tagline.accent.length;
 }
 
-export interface RevealSegments {
-  leadRevealed: string;
-  leadHidden: string;
-  accentRevealed: string;
-  accentHidden: string;
-  /** Which run the caret currently sits at the end of. */
-  caretAt: 'lead' | 'space' | 'accent';
+export interface RevealedTagline {
+  leadShown: string;
+  spaceShown: boolean;
+  accentShown: string;
 }
 
 /**
- * Splits a tagline into revealed/hidden runs for a given character count —
- * both halves of `lead` (and of `accent`) are meant to render together,
- * always, so the line's layout is driven by the tagline's *full* text at
- * every frame. Only a run's opacity should change between revealed and
- * hidden, never whether it's in the DOM: if the hidden run were left out of
- * the render instead, the line would re-wrap and re-center as it grows,
- * dragging already-typed letters out of the position they're going to end
- * up in.
+ * Slices a tagline down to its first `count` characters (of
+ * `${lead} ${accent}`) — a single, unbroken run of real text, exactly as
+ * long as what's actually typed so far, nothing more.
+ *
+ * An earlier version rendered the *full* tagline at every frame (revealed
+ * text plus a same-length, opacity:0 "hidden" remainder) so the line's wrap
+ * points would never move as more got typed. In testing that traded one bug
+ * for a worse one: splitting a wrapped, multi-line string across two DOM
+ * text runs measurably perturbs the browser's own line-breaking — moving
+ * *where* that split falls (which is exactly what changes on every
+ * keystroke) could flip a borderline line back and forth between wrapping
+ * to N vs N+1 lines, for text whose content never changed. Plain slicing
+ * has no split at all, so it can't do that; growing into a new line is then
+ * just the normal, expected shape of a typewriter effect. The one thing
+ * slicing doesn't fix on its own — a centered line re-centering itself
+ * sideways as it grows — is handled by keeping the live tagline left-aligned
+ * regardless of viewport (see .hero__title-live in HomePage.css).
  */
-export function revealSegments(tagline: TypewriterTagline, count: number): RevealSegments {
+export function revealText(tagline: TypewriterTagline, count: number): RevealedTagline {
   const leadLen = tagline.lead.length;
-  const leadRevealedLen = Math.max(0, Math.min(count, leadLen));
-  const leadRevealed = tagline.lead.slice(0, leadRevealedLen);
-  const leadHidden = tagline.lead.slice(leadRevealedLen);
-
+  const leadShown = tagline.lead.slice(0, Math.max(0, Math.min(count, leadLen)));
   const afterLead = count - leadLen;
-  const accentRevealedLen = Math.max(0, Math.min(tagline.accent.length, afterLead - 1));
-  const accentRevealed = tagline.accent.slice(0, accentRevealedLen);
-  const accentHidden = tagline.accent.slice(accentRevealedLen);
-
-  const caretAt: RevealSegments['caretAt'] =
-    count <= leadLen ? 'lead' : count === leadLen + 1 ? 'space' : 'accent';
-
-  return { leadRevealed, leadHidden, accentRevealed, accentHidden, caretAt };
+  const spaceShown = afterLead >= 1;
+  const accentShown = spaceShown ? tagline.accent.slice(0, Math.max(0, afterLead - 1)) : '';
+  return { leadShown, spaceShown, accentShown };
 }
 
 /**

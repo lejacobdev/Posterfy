@@ -32,44 +32,48 @@
   letter-spacing: -0.04em;
   line-height: 1.02;
   max-width: 16ch;
+  /* Always left-aligned, even where .hero__copy centers everything else
+     below 1024px — a centered line re-centers itself sideways as it grows,
+     which would drag already-typed letters out of place mid-animation. */
+  text-align: left;
 }
 
 .hero__title-line {
   display: block;
 }
 
-/* Reserves space for the tallest possible tagline so the typewriter effect
-   never shifts anything below it: the sizer stacks every tagline in one grid
-   cell (auto-sized to the tallest), and the live headline overlays the same
-   cell without affecting that size. */
+/* Reserves space (via an explicit min-height set in HomePage.tsx) for the
+   tallest possible tagline, so the typewriter effect never shifts anything
+   below it. The sizer that measures that height is positioned out of flow
+   entirely — it plays no part in the frame's own layout, so it can't affect
+   it (an earlier version overlapped it into the same CSS Grid cell as the
+   live headline instead, which measured fine but had the browser's own
+   row-height resolution intermittently flicker between two heights for
+   perfectly static content). */
 .hero__title-frame {
   position: relative;
-  display: grid;
-}
-
-.hero__title-sizer,
-.hero__title-live {
-  grid-area: 1 / 1;
+  /* Without an explicit width, a flex item shrinks to fit its own content —
+     .hero__title's max-width: 100% (used below 1024px) would then have no
+     stable width to resolve against, since that "100%" is of *this* box,
+     which is itself sized by that same content. That circular sizing is
+     what made the reserved min-height (see HomePage.tsx) recompute
+     differently depending on how much of the current line was typed, and
+     let the box's centered position (.hero__copy centers its children below
+     1024px) drift sideways as it grew — dragging already-typed letters
+     along with it. Stretching to the column's full, fixed width breaks the
+     cycle and removes the centering ambiguity in the same move. */
+  align-self: stretch;
 }
 
 .hero__title-sizer {
-  display: grid;
+  position: absolute;
+  inset: 0;
   visibility: hidden;
+  pointer-events: none;
 }
 
 .hero__title-sizer-line {
-  grid-area: 1 / 1;
-}
-
-.hero__title-live {
-  align-self: start;
-}
-
-/* Both halves of the lead/accent text are always rendered (see
-   revealSegments in useTypewriter.ts) so the line's width and wrap points
-   never change as more of it is revealed — only this opacity toggles. */
-.hero__hidden {
-  opacity: 0;
+  display: block;
 }
 
 .hero__caret {
