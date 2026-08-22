@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { useReveal, useStaggeredReveal } from '@/hooks/useReveal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { useTypewriterTagline } from '@/hooks/useTypewriter';
+import { revealSegments, useTypewriterTagline } from '@/hooks/useTypewriter';
 import { DEMO_ALBUMS, demoAlbum } from '@/lib/demo/demoAlbums';
 import { DEFAULT_OPTIONS, STYLE_PRESETS, TEMPLATE_META } from '@/lib/poster/defaults';
 import type { PosterSpec, TemplateId } from '@/lib/types';
@@ -43,9 +43,13 @@ export default function HomePage() {
   // old-school typewriter delete/retype effect instead of always showing
   // the same one. Paused for reduced-motion, same as any other
   // auto-advancing content on the page.
-  const { leadShown, spaceShown, accentShown, showCaret } = useTypewriterTagline(taglines, {
+  const { tagline, count, showCaret } = useTypewriterTagline(taglines, {
     enabled: !prefersReducedMotion,
   });
+  const { leadRevealed, leadHidden, accentRevealed, accentHidden, caretAt } = useMemo(
+    () => revealSegments(tagline, count),
+    [tagline, count],
+  );
 
   const featuresRef = useStaggeredReveal<HTMLDivElement>(70);
   const stepsRef = useStaggeredReveal<HTMLOListElement>(90);
@@ -121,10 +125,21 @@ export default function HomePage() {
               </div>
               <h1 className="hero__title hero__title-live">
                 <span className="hero__title-line">
-                  {leadShown}
-                  {spaceShown && ' '}
-                  <span className="gradient-text">{accentShown}</span>
-                  {showCaret && <span className="hero__caret" aria-hidden="true" />}
+                  {leadRevealed}
+                  {caretAt === 'lead' && showCaret && (
+                    <span className="hero__caret" aria-hidden="true" />
+                  )}
+                  <span className="hero__hidden">{leadHidden}</span>{' '}
+                  {caretAt === 'space' && showCaret && (
+                    <span className="hero__caret" aria-hidden="true" />
+                  )}
+                  <span className="gradient-text">
+                    {accentRevealed}
+                    {caretAt === 'accent' && showCaret && (
+                      <span className="hero__caret" aria-hidden="true" />
+                    )}
+                    <span className="hero__hidden">{accentHidden}</span>
+                  </span>
                 </span>
               </h1>
             </div>

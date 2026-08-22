@@ -98,6 +98,14 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The hero tagline's typewriter effect visibly reflowed already-typed
+  letters as more of the line was revealed: sliced text plus centered/
+  wrapped layout meant each new character could change the wrap points or
+  re-center the whole line, dragging earlier letters sideways. Both the
+  lead and accent halves now always render their full text — only a
+  hidden run's opacity toggles, never whether it's in the DOM — so the
+  line's width and wrap points are fixed for the whole reveal and a typed
+  letter never moves again once it appears.
 - The wizard's step rail (Record → Look → Size → Contents → Finish) was
   only centered below 600px; `justify-content: center` had been scoped to
   that one mobile media query, so on every wider screen the steps sat

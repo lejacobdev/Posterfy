@@ -6,9 +6,9 @@ export interface TypewriterTagline {
 }
 
 export interface TypewriterState {
-  leadShown: string;
-  spaceShown: boolean;
-  accentShown: string;
+  tagline: TypewriterTagline;
+  /** How many characters of `${tagline.lead} ${tagline.accent}` are revealed. */
+  count: number;
   /** Whether a blinking caret should render at all (off for reduced motion). */
   showCaret: boolean;
 }
@@ -32,13 +32,40 @@ function fullLength(tagline?: TypewriterTagline): number {
   return tagline.lead.length + 1 + tagline.accent.length;
 }
 
-function splitAt(tagline: TypewriterTagline, count: number) {
+export interface RevealSegments {
+  leadRevealed: string;
+  leadHidden: string;
+  accentRevealed: string;
+  accentHidden: string;
+  /** Which run the caret currently sits at the end of. */
+  caretAt: 'lead' | 'space' | 'accent';
+}
+
+/**
+ * Splits a tagline into revealed/hidden runs for a given character count —
+ * both halves of `lead` (and of `accent`) are meant to render together,
+ * always, so the line's layout is driven by the tagline's *full* text at
+ * every frame. Only a run's opacity should change between revealed and
+ * hidden, never whether it's in the DOM: if the hidden run were left out of
+ * the render instead, the line would re-wrap and re-center as it grows,
+ * dragging already-typed letters out of the position they're going to end
+ * up in.
+ */
+export function revealSegments(tagline: TypewriterTagline, count: number): RevealSegments {
   const leadLen = tagline.lead.length;
-  const leadShown = tagline.lead.slice(0, Math.min(count, leadLen));
+  const leadRevealedLen = Math.max(0, Math.min(count, leadLen));
+  const leadRevealed = tagline.lead.slice(0, leadRevealedLen);
+  const leadHidden = tagline.lead.slice(leadRevealedLen);
+
   const afterLead = count - leadLen;
-  const spaceShown = afterLead >= 1;
-  const accentShown = afterLead >= 1 ? tagline.accent.slice(0, afterLead - 1) : '';
-  return { leadShown, spaceShown, accentShown };
+  const accentRevealedLen = Math.max(0, Math.min(tagline.accent.length, afterLead - 1));
+  const accentRevealed = tagline.accent.slice(0, accentRevealedLen);
+  const accentHidden = tagline.accent.slice(accentRevealedLen);
+
+  const caretAt: RevealSegments['caretAt'] =
+    count <= leadLen ? 'lead' : count === leadLen + 1 ? 'space' : 'accent';
+
+  return { leadRevealed, leadHidden, accentRevealed, accentHidden, caretAt };
 }
 
 /**
@@ -94,10 +121,9 @@ export function useTypewriterTagline(
     return () => clearTimeout(id);
   }, [canAnimate, phase, count, total, taglines.length, holdMs, deleteMs, typeMs]);
 
-  const { leadShown, spaceShown, accentShown } = useMemo(
-    () => splitAt(tagline ?? { lead: '', accent: '' }, count),
-    [tagline, count],
-  );
-
-  return { leadShown, spaceShown, accentShown, showCaret: canAnimate };
+  return {
+    tagline: tagline ?? { lead: '', accent: '' },
+    count,
+    showCaret: canAnimate,
+  };
 }

@@ -65,12 +65,21 @@
   align-self: start;
 }
 
+/* Both halves of the lead/accent text are always rendered (see
+   revealSegments in useTypewriter.ts) so the line's width and wrap points
+   never change as more of it is revealed — only this opacity toggles. */
+.hero__hidden {
+  opacity: 0;
+}
+
 .hero__caret {
   display: inline-block;
   width: 0.06em;
   height: 0.9em;
   margin-left: 0.02em;
-  background: currentColor;
+  /* Not currentColor: this can sit inside .gradient-text, whose own color
+     is transparent (it paints through a background-clip instead). */
+  background: var(--text);
   vertical-align: -0.08em;
   animation: hero-caret-blink 1s step-end infinite;
 }
