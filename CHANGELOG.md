@@ -13,8 +13,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   that adds the Advanced (drag/resize) tab. The choice is remembered across
   visits and defaults to Easy for new users.
 - The homepage hero headline now rotates through five different taglines
-  every few seconds instead of always showing the same line, and pauses for
-  reduced-motion.
+  with an old-school typewriter effect — holding the fully-typed line, then
+  backspacing it out and typing the next one in, complete with a blinking
+  caret. Space is reserved for the tallest possible tagline, so nothing
+  below the headline shifts as shorter or longer lines type in. Frozen on
+  the first tagline with no caret for reduced-motion.
 - Advanced editor mode: a new "Advanced" tab lets you drag any poster element
   (cover, title, artist, tracklist, palette, scan code, custom note) directly
   on the live preview to move or resize it, or dial it in with numeric

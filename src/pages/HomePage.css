@@ -38,6 +38,61 @@
   display: block;
 }
 
+/* Reserves space for the tallest possible tagline so the typewriter effect
+   never shifts anything below it: the sizer stacks every tagline in one grid
+   cell (auto-sized to the tallest), and the live headline overlays the same
+   cell without affecting that size. */
+.hero__title-frame {
+  position: relative;
+  display: grid;
+}
+
+.hero__title-sizer,
+.hero__title-live {
+  grid-area: 1 / 1;
+}
+
+.hero__title-sizer {
+  display: grid;
+  visibility: hidden;
+}
+
+.hero__title-sizer-line {
+  grid-area: 1 / 1;
+}
+
+.hero__title-live {
+  align-self: start;
+}
+
+.hero__caret {
+  display: inline-block;
+  width: 0.06em;
+  height: 0.9em;
+  margin-left: 0.02em;
+  background: currentColor;
+  vertical-align: -0.08em;
+  animation: hero-caret-blink 1s step-end infinite;
+}
+
+@keyframes hero-caret-blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  50.01%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__caret {
+    animation: none;
+  }
+}
+
 .hero__subtitle {
   max-width: 52ch;
 }

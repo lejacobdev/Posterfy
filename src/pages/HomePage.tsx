@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '@/i18n';
 import { useReveal, useStaggeredReveal } from '@/hooks/useReveal';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useTypewriterTagline } from '@/hooks/useTypewriter';
 import { DEMO_ALBUMS, demoAlbum } from '@/lib/demo/demoAlbums';
 import { DEFAULT_OPTIONS, STYLE_PRESETS, TEMPLATE_META } from '@/lib/poster/defaults';
 import type { PosterSpec, TemplateId } from '@/lib/types';
@@ -31,29 +32,20 @@ interface Tagline {
   accent: string;
 }
 
-/** How long each hero tagline stays up before the next one fades in. */
-const TAGLINE_INTERVAL_MS = 5000;
-
 export default function HomePage() {
   const { t, list } = useI18n();
   const features = list<FeatureCopy>('home.features');
   const steps = list<FeatureCopy>('home.steps');
   const taglines = list<Tagline>('home.taglines');
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const [taglineIndex, setTaglineIndex] = useState(0);
 
-  // Rotates the hero headline through a handful of pitches instead of always
-  // showing the same one. Paused for reduced-motion, same as any other
+  // Rotates the hero headline through a handful of pitches with an
+  // old-school typewriter delete/retype effect instead of always showing
+  // the same one. Paused for reduced-motion, same as any other
   // auto-advancing content on the page.
-  useEffect(() => {
-    if (prefersReducedMotion || taglines.length <= 1) return undefined;
-    const id = setInterval(() => {
-      setTaglineIndex((index) => (index + 1) % taglines.length);
-    }, TAGLINE_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [taglines.length, prefersReducedMotion]);
-
-  const tagline = taglines[taglineIndex % taglines.length] ?? taglines[0];
+  const { leadShown, spaceShown, accentShown, showCaret } = useTypewriterTagline(taglines, {
+    enabled: !prefersReducedMotion,
+  });
 
   const featuresRef = useStaggeredReveal<HTMLDivElement>(70);
   const stepsRef = useStaggeredReveal<HTMLOListElement>(90);
@@ -115,11 +107,27 @@ export default function HomePage() {
               <Icon name="sparkles" size={14} />
               {t('home.badge')}
             </span>
-            <h1 className="hero__title">
-              <span key={taglineIndex} className="hero__title-line animate-fade-in">
-                {tagline?.lead} <span className="gradient-text">{tagline?.accent}</span>
-              </span>
-            </h1>
+            <div className="hero__title-frame">
+              {/* Invisible: every tagline stacked in the same grid cell, so
+                  this box is always exactly as tall as the longest one —
+                  the live headline below never resizes it, so nothing below
+                  the hero title shifts as shorter/longer lines type in. */}
+              <div className="hero__title-sizer" aria-hidden="true">
+                {taglines.map((item, itemIndex) => (
+                  <span key={itemIndex} className="hero__title hero__title-sizer-line">
+                    {item.lead} <span className="gradient-text">{item.accent}</span>
+                  </span>
+                ))}
+              </div>
+              <h1 className="hero__title hero__title-live">
+                <span className="hero__title-line">
+                  {leadShown}
+                  {spaceShown && ' '}
+                  <span className="gradient-text">{accentShown}</span>
+                  {showCaret && <span className="hero__caret" aria-hidden="true" />}
+                </span>
+              </h1>
+            </div>
             <p className="lead hero__subtitle">{t('home.subtitle')}</p>
 
             <div className="hero__actions">
