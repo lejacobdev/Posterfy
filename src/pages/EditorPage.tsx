@@ -27,7 +27,7 @@ import { ContentPanel } from '@/components/editor/ContentPanel';
 import { ExportPanel } from '@/components/editor/ExportPanel';
 import { AdvancedPanel } from '@/components/editor/AdvancedPanel';
 import { elementLabel } from '@/components/editor/elementLabels';
-import { LayoutOverlay } from '@/components/editor/LayoutOverlay';
+import { LayoutOverlay, type EditableText } from '@/components/editor/LayoutOverlay';
 import '@/components/editor/editor.css';
 
 type TabId = 'album' | 'design' | 'content' | 'advanced' | 'export';
@@ -66,15 +66,24 @@ export default function EditorPage() {
   );
 
   // Easy mode hides the Advanced tab entirely rather than merely disabling
-  // it — a first-time user should never wonder what it does. Switching back
-  // to Easy while it's open falls back to Design, the next most central tab.
+  // it — a first-time user should never wonder what it does. Advanced mode
+  // goes the other way: Design and Content are Easy mode's own editing
+  // surface (form fields for what Advanced instead does by dragging and
+  // typing directly on the poster), so they'd just be a second, conflicting
+  // way to change the same things — hidden while Advanced is on.
   const visibleTabs = useMemo(
-    () => TABS.filter((item) => item.id !== 'advanced' || editorMode === 'advanced'),
+    () =>
+      TABS.filter((item) => {
+        if (item.id === 'advanced') return editorMode === 'advanced';
+        if (item.id === 'design' || item.id === 'content') return editorMode === 'easy';
+        return true;
+      }),
     [editorMode],
   );
 
   useEffect(() => {
     if (editorMode === 'easy' && tab === 'advanced') setTab('design');
+    if (editorMode === 'advanced' && (tab === 'design' || tab === 'content')) setTab('advanced');
   }, [editorMode, tab]);
 
   // Keyboard shortcuts for undo/redo, the way a design tool should behave.
@@ -95,9 +104,9 @@ export default function EditorPage() {
   const handleSelect = useCallback(
     (next: Album) => {
       setAlbum(next);
-      setTab('design');
+      setTab(editorMode === 'advanced' ? 'advanced' : 'design');
     },
-    [setAlbum],
+    [setAlbum, editorMode],
   );
 
   const handlePalette = useCallback(
@@ -110,6 +119,43 @@ export default function EditorPage() {
   const handleLayout = useCallback((next: Map<ElementId, LayoutBox>) => {
     setLayout(next);
   }, []);
+
+  // Elements with a free-text option behind them can be typed into directly
+  // on the canvas in Advanced mode, PowerPoint-style, instead of only
+  // through Content's (now hidden) text fields.
+  const editableText = useMemo<Partial<Record<ElementId, EditableText>>>(() => {
+    const map: Partial<Record<ElementId, EditableText>> = {};
+    if (layout.has('title')) {
+      map.title = { value: spec.options.titleOverride, placeholder: album.title || '' };
+    }
+    if (layout.has('artist')) {
+      map.artist = { value: spec.options.artistOverride, placeholder: album.artist || '' };
+    }
+    if (layout.has('customNote')) {
+      map.customNote = {
+        value: spec.options.customNote,
+        placeholder: t('editor.customNotePlaceholder'),
+      };
+    }
+    return map;
+  }, [
+    layout,
+    spec.options.titleOverride,
+    spec.options.artistOverride,
+    spec.options.customNote,
+    album.title,
+    album.artist,
+    t,
+  ]);
+
+  const handleTextChange = useCallback(
+    (id: ElementId, value: string) => {
+      if (id === 'title') setOption('titleOverride', value);
+      else if (id === 'artist') setOption('artistOverride', value);
+      else if (id === 'customNote') setOption('customNote', value);
+    },
+    [setOption],
+  );
 
   return (
     <>
@@ -142,6 +188,8 @@ export default function EditorPage() {
                           onSelect={setSelectedElement}
                           onChange={setLayoutOverride}
                           labelFor={(id) => elementLabel(t, id)}
+                          editableText={editableText}
+                          onTextChange={handleTextChange}
                         />
                       ) : undefined
                     }

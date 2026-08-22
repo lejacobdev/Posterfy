@@ -156,7 +156,7 @@ export const de: Dictionary = {
     modeAdvanced: 'Erweitert',
     tabExport: 'Export',
     advancedHint:
-      'Ziehe ein Element in der Vorschau, um es zu verschieben oder zu skalieren, oder nutze die Felder unten.',
+      'Ziehe ein Element in der Vorschau, um es zu verschieben oder zu skalieren, oder nutze die Felder unten. Doppelklicke auf Text im Poster (oder drücke Enter), um direkt hineinzuschreiben.',
     advancedElementsTitle: 'Elemente',
     advancedSelectPrompt: 'Wähle ein Element in der Vorschau oder in der Liste oben aus.',
     positionX: 'Horizontal',

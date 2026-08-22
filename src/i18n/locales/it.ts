@@ -156,7 +156,7 @@ export const it: Dictionary = {
     modeAdvanced: 'Avanzata',
     tabExport: 'Export',
     advancedHint:
-      'Trascina un elemento nell’anteprima per spostarlo o ridimensionarlo, oppure usa i campi qui sotto.',
+      'Trascina un elemento nell’anteprima per spostarlo o ridimensionarlo, oppure usa i campi qui sotto. Fai doppio clic su un testo del poster (o premi Invio) per scrivere direttamente al suo interno.',
     advancedElementsTitle: 'Elementi',
     advancedSelectPrompt: 'Seleziona un elemento nell’anteprima o nell’elenco sopra.',
     positionX: 'Orizzontale',

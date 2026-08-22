@@ -5,11 +5,16 @@
  * only a drag gesture does, and only for that gesture's duration.
  */
 
-import { useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { ElementId, FormatId, LayoutBox, LayoutOverride } from '@/lib/types';
 import { designHeight } from '@/lib/poster/formats';
 import { cn } from '@/lib/utils/misc';
 import './LayoutOverlay.css';
+
+export interface EditableText {
+  value: string;
+  placeholder: string;
+}
 
 export interface LayoutOverlayProps {
   layout: Map<ElementId, LayoutBox>;
@@ -19,6 +24,9 @@ export interface LayoutOverlayProps {
   onSelect: (id: ElementId | null) => void;
   onChange: (id: ElementId, override: LayoutOverride) => void;
   labelFor: (id: ElementId) => string;
+  /** Elements with a free-text option behind them — these can be typed into directly. */
+  editableText?: Partial<Record<ElementId, EditableText>>;
+  onTextChange?: (id: ElementId, value: string) => void;
 }
 
 const DEFAULT_OVERRIDE: LayoutOverride = { dx: 0, dy: 0, scale: 1 };
@@ -31,9 +39,18 @@ export function LayoutOverlay({
   onSelect,
   onChange,
   labelFor,
+  editableText,
+  onTextChange,
 }: LayoutOverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const designH = designHeight(format);
+  const [editingId, setEditingId] = useState<ElementId | null>(null);
+
+  // Selecting a different element (from the canvas or the panel list) always
+  // closes any open text-editing box — there's only ever one at a time.
+  useEffect(() => {
+    setEditingId((current) => (current === selected ? current : null));
+  }, [selected]);
 
   return (
     <div
@@ -53,8 +70,13 @@ export function LayoutOverlay({
           designHeight={designH}
           override={overrides[id] ?? DEFAULT_OVERRIDE}
           selected={selected === id}
+          editing={editingId === id}
+          editableText={editableText?.[id]}
           onSelect={onSelect}
           onChange={onChange}
+          onStartEdit={() => setEditingId(id)}
+          onStopEdit={() => setEditingId(null)}
+          onTextChange={(value) => onTextChange?.(id, value)}
           containerRef={containerRef}
           label={labelFor(id)}
         />
@@ -69,8 +91,13 @@ interface ElementHitBoxProps {
   designHeight: number;
   override: LayoutOverride;
   selected: boolean;
+  editing: boolean;
+  editableText?: EditableText;
   onSelect: (id: ElementId) => void;
   onChange: (id: ElementId, override: LayoutOverride) => void;
+  onStartEdit: () => void;
+  onStopEdit: () => void;
+  onTextChange: (value: string) => void;
   containerRef: RefObject<HTMLDivElement>;
   label: string;
 }
@@ -93,8 +120,13 @@ function ElementHitBox({
   designHeight: designH,
   override,
   selected,
+  editing,
+  editableText,
   onSelect,
   onChange,
+  onStartEdit,
+  onStopEdit,
+  onTextChange,
   containerRef,
   label,
 }: ElementHitBoxProps) {
@@ -151,16 +183,33 @@ function ElementHitBox({
 
   return (
     <div
-      className={cn('layout-hitbox', selected && 'is-selected')}
+      className={cn('layout-hitbox', selected && 'is-selected', editing && 'is-editing')}
       style={style}
-      onPointerDown={(event) => beginDrag(event, 'move')}
+      onPointerDown={(event) => {
+        // While editing, the click is placing a text cursor — let the
+        // browser handle it instead of hijacking it into a drag.
+        if (editing) return;
+        beginDrag(event, 'move');
+      }}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onDoubleClick={(event) => {
+        if (!editableText) return;
+        event.stopPropagation();
+        onSelect(id);
+        onStartEdit();
+      }}
       role="button"
       tabIndex={0}
       aria-label={label}
       onKeyDown={(event) => {
+        if (editing) return;
+        if (event.key === 'Enter' && editableText) {
+          event.preventDefault();
+          onStartEdit();
+          return;
+        }
         const nudge = event.shiftKey ? 10 : 2;
         if (event.key === 'ArrowLeft') onChange(id, { ...override, dx: override.dx - nudge });
         else if (event.key === 'ArrowRight') onChange(id, { ...override, dx: override.dx + nudge });
@@ -171,15 +220,35 @@ function ElementHitBox({
         onSelect(id);
       }}
     >
-      {selected && (
-        <span
-          className="layout-hitbox__handle"
-          onPointerDown={(event) => beginDrag(event, 'resize')}
-          onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          aria-hidden="true"
+      {editing && editableText ? (
+        <input
+          type="text"
+          className="layout-hitbox__input"
+          autoFocus
+          value={editableText.value}
+          placeholder={editableText.placeholder}
+          onChange={(event) => onTextChange(event.target.value)}
+          onPointerDown={(event) => event.stopPropagation()}
+          onKeyDown={(event) => {
+            // Otherwise the outer hitbox's own handler would nudge the
+            // element around, or the / character etc. would trigger a
+            // keyboard shortcut, on every keystroke typed here.
+            event.stopPropagation();
+            if (event.key === 'Enter' || event.key === 'Escape') event.currentTarget.blur();
+          }}
+          onBlur={onStopEdit}
         />
+      ) : (
+        selected && (
+          <span
+            className="layout-hitbox__handle"
+            onPointerDown={(event) => beginDrag(event, 'resize')}
+            onPointerMove={onPointerMove}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            aria-hidden="true"
+          />
+        )
       )}
     </div>
   );

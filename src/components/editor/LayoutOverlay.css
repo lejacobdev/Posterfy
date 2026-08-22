@@ -32,6 +32,27 @@
   background: color-mix(in srgb, var(--brand-500) 8%, transparent);
 }
 
+.layout-hitbox.is-editing {
+  cursor: text;
+  border: 1.5px solid var(--brand-400);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.layout-hitbox__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: text;
+}
+
 .layout-hitbox__handle {
   position: absolute;
   right: -6px;

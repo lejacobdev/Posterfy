@@ -12,6 +12,15 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   sidebar switches between the default, simpler tab set and the fuller one
   that adds the Advanced (drag/resize) tab. The choice is remembered across
   visits and defaults to Easy for new users.
+- Advanced mode is now a self-contained editing surface: switching to it
+  hides Design and Content (their form fields would just be a second,
+  conflicting way to change what Advanced already does directly), and any
+  text element with a free-text option — title, artist, custom note — can
+  now be double-clicked (or selected and Enter pressed) to type into it
+  right on the poster, PowerPoint-style, live-updating as you type. Clicking
+  an element on the canvas and picking it from the Advanced panel's list
+  already shared one selection; this just gives that selection a second
+  thing to do besides drag and resize.
 - The homepage hero headline now rotates through five different taglines
   with an old-school typewriter effect — holding the fully-typed line, then
   backspacing it out and typing the next one in, complete with a blinking

@@ -159,7 +159,7 @@ export const es: Dictionary = {
     modeAdvanced: 'Avanzado',
     tabExport: 'Exportar',
     advancedHint:
-      'Arrastra cualquier elemento en la vista previa para moverlo o cambiar su tamaño, o usa los campos de abajo.',
+      'Arrastra cualquier elemento en la vista previa para moverlo o cambiar su tamaño, o usa los campos de abajo. Haz doble clic en un texto del póster (o pulsa Enter) para escribir directamente en él.',
     advancedElementsTitle: 'Elementos',
     advancedSelectPrompt: 'Selecciona un elemento en la vista previa o en la lista de arriba.',
     positionX: 'Horizontal',

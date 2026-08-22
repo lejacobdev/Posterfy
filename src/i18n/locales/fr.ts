@@ -156,7 +156,7 @@ export const fr: Dictionary = {
     modeAdvanced: 'Avancé',
     tabExport: 'Export',
     advancedHint:
-      'Faites glisser un élément dans l’aperçu pour le déplacer ou le redimensionner, ou utilisez les champs ci-dessous.',
+      'Faites glisser un élément dans l’aperçu pour le déplacer ou le redimensionner, ou utilisez les champs ci-dessous. Double-cliquez sur un texte de l’affiche (ou appuyez sur Entrée) pour taper directement dedans.',
     advancedElementsTitle: 'Éléments',
     advancedSelectPrompt: 'Sélectionnez un élément dans l’aperçu ou dans la liste ci-dessus.',
     positionX: 'Horizontal',

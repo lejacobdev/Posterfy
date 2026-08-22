@@ -160,7 +160,8 @@ export const en = {
     tabExport: 'Export',
     showPreview: 'Preview',
     hidePreview: 'Controls',
-    advancedHint: 'Drag any element on the preview to move or resize it, or use the fields below.',
+    advancedHint:
+      'Drag any element on the preview to move or resize it, or use the fields below. Double-click text on the poster (or press Enter) to type directly into it.',
     advancedElementsTitle: 'Elements',
     advancedSelectPrompt: 'Select an element on the preview or in the list above.',
     positionX: 'Horizontal',

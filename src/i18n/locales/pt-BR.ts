@@ -156,7 +156,7 @@ export const ptBR: Dictionary = {
     modeAdvanced: 'Avançado',
     tabExport: 'Exportar',
     advancedHint:
-      'Arraste qualquer elemento na pré-visualização para mover ou redimensionar, ou use os campos abaixo.',
+      'Arraste qualquer elemento na pré-visualização para mover ou redimensionar, ou use os campos abaixo. Clique duas vezes em um texto do pôster (ou pressione Enter) para digitar diretamente nele.',
     advancedElementsTitle: 'Elementos',
     advancedSelectPrompt: 'Selecione um elemento na pré-visualização ou na lista acima.',
     positionX: 'Horizontal',
