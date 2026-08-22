@@ -95,6 +95,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- The wizard's step rail (Record → Look → Size → Contents → Finish) was
+  only centered below 600px; `justify-content: center` had been scoped to
+  that one mobile media query, so on every wider screen the steps sat
+  flush against the left edge instead. Centered by default everywhere.
 - The template gallery only had 4 demo albums for 6 templates plus 6 style
   presets, so several cards silently reused the same record — most visibly,
   Split showed Classic's album and Duotone showed Editorial's, making

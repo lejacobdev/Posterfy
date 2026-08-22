@@ -28,6 +28,7 @@
 .wizard__rail {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-1);
   margin: 0 auto var(--space-6);
   padding: 0;
@@ -463,10 +464,6 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
-  }
-
-  .wizard__rail {
-    justify-content: center;
   }
 
   .wizard__rail-btn {
